@@ -1,0 +1,14 @@
+{
+  "description": "小交课表 · 非官方个人课表",
+  "miniprogramRoot": "miniprogram/",
+  "compileType": "miniprogram",
+  "appid": "touristappid",
+  "projectname": "小交课表",
+  "setting": {
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true
+  },
+  "libVersion": "3.7.1"
+}

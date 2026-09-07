@@ -1,0 +1,55 @@
+<view class="page"
+  ><view class="title">{{mode === 'import' ? '导入课表' : '备份与恢复'}}</view
+  ><view class="row"
+    ><button style="flex: 1" data-mode="import" bindtap="mode">课表导入</button
+    ><button style="flex: 1" data-mode="backup" bindtap="mode">
+      完整备份
+    </button></view
+  ><view wx:if="{{mode === 'import'}}" class="panel"
+    ><view style="font-size: 31rpx">先让 AI 帮你整理</view
+    ><view class="muted"
+      >复制提示词，把教务课表一同交给你常用的 AI，再将得到的 JSON
+      粘贴到下方。小程序不调用任何 AI 或外部接口。</view
+    ><button bindtap="copyPrompt">复制 AI 转换提示词</button
+    ><text class="muted" selectable>{{prompt}}</text
+    ><button bindtap="example">填入示例 JSON</button></view
+  ><view wx:else class="panel"
+    ><view style="font-size: 31rpx">把课表安全留一份</view
+    ><view class="muted"
+      >完整备份包含基础课程和所有单次调整。请将 JSON
+      保存到自己的文件中，恢复时粘贴原文。</view
+    ><button class="primary" bindtap="export">导出并复制完整 JSON</button
+    ><button bindtap="file">导出 JSON 文件并分享</button
+    ><text
+      wx:if="{{exportText}}"
+      selectable
+      class="muted"
+      style="word-break: break-all"
+      >{{exportText}}</text
+    ></view
+  ><view class="panel"
+    ><view class="label"
+      >{{mode === 'import' ? '粘贴课表 JSON' : '粘贴完整备份 JSON'}}</view
+    ><textarea
+      value="{{text}}"
+      maxlength="2000000"
+      placeholder="粘贴完整 JSON，不要带 ``` 标记"
+      bindinput="input"
+      auto-height="{{false}}"
+    /><button class="primary" bindtap="validate">校验并预览</button
+    ><view wx:if="{{message}}" class="notice">{{message}}</view></view
+  ><view wx:if="{{preview}}" class="panel"
+    ><view style="font-size: 31rpx">预览 · {{count}} 条课程</view
+    ><view class="muted"
+      >{{adjustmentCount}} 条单次调整 · 请核对星期、节次与周次<br />导入将替换现有数据，不会自动合并。</view
+    ><view wx:for="{{rows}}" wx:key="index" class="line"
+      ><view>{{item.name}} · {{item.room || '教室待定'}}</view
+      ><view class="muted"
+        >周{{item.day}} · 第 {{item.sections}} 节<br />第 {{item.weeks}}
+        周</view
+      ></view
+    ><button class="primary" bindtap="confirm">
+      {{mode === 'import' ? '确认导入并替换' : '确认恢复并替换'}}
+    </button></view
+  ></view
+>

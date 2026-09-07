@@ -1,0 +1,16 @@
+{
+  "name": "xiaojiao-timetable",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "check": "tsc --noEmit",
+    "test": "npm run build && node --test tests/*.cjs",
+    "format": "prettier --write \"miniprogram/**/*.ts\" \"tests/*.cjs\" \"*.json\""
+  },
+  "devDependencies": {
+    "miniprogram-api-typings": "3.12.3",
+    "prettier": "3.3.3",
+    "typescript": "5.6.3"
+  }
+}

@@ -1,0 +1,73 @@
+<view class="page"
+  ><view class="title">{{id ? '编辑课程' : '添加一门课'}}</view
+  ><view class="muted">为自己的新学期，安排一点秩序。</view
+  ><view class="panel"
+    ><view class="label">课程名称 *</view
+    ><input
+      value="{{name}}"
+      maxlength="500"
+      placeholder="例如：数据库系统原理与应用"
+      data-field="name"
+      bindinput="input"
+    /><view class="label">教室</view
+    ><input
+      value="{{room}}"
+      maxlength="500"
+      placeholder="例如：5-2W201"
+      data-field="room"
+      bindinput="input"
+    /><view class="label">班级</view
+    ><input
+      value="{{className}}"
+      maxlength="500"
+      placeholder="例如：1班"
+      data-field="className"
+      bindinput="input"
+    /><view class="label">教师（多位用顿号分隔）</view
+    ><input
+      value="{{teachers}}"
+      maxlength="500"
+      data-field="teachers"
+      bindinput="input"
+    /><view class="label">星期</view
+    ><picker range="{{days}}" value="{{weekday - 1}}" bindchange="day"
+      ><view class="picker">{{days[weekday - 1]}} ▾</view></picker
+    ><view class="label">节次 · 可多选</view
+    ><view class="chips"
+      ><view
+        wx:for="{{sectionOptions}}"
+        wx:key="n"
+        class="chip {{item.selected ? 'selected' : ''}}"
+        data-field="sections"
+        data-n="{{item.n}}"
+        bindtap="toggle"
+        >{{item.n}}</view
+      ></view
+    ><view class="label">周次 · 支持不连续选择</view
+    ><view class="row"
+      ><text class="link small" data-mode="all" bindtap="preset">1～16周</text
+      ><text class="link small" data-mode="odd" bindtap="preset">单周</text
+      ><text class="link small" data-mode="even" bindtap="preset"
+        >双周</text
+      ></view
+    ><view class="spacer" /><view class="chips"
+      ><view
+        wx:for="{{weekOptions}}"
+        wx:key="n"
+        class="chip {{item.selected ? 'selected' : ''}}"
+        data-field="weeks"
+        data-n="{{item.n}}"
+        bindtap="toggle"
+        >{{item.n}}</view
+      ></view
+    ><view class="muted">17～18周为考试周，只有明确选择才会排课。</view
+    ><view class="label">备注</view
+    ><textarea
+      value="{{note}}"
+      maxlength="500"
+      data-field="note"
+      bindinput="input"
+      style="height: 180rpx"
+    /></view
+  ><button class="primary" bindtap="save">保存课程</button></view
+>

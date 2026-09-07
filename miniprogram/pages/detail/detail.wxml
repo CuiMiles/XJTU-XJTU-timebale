@@ -1,0 +1,51 @@
+<view class="page" wx:if="{{o}}"
+  ><view class="muted">课程详情 {{o.adjusted ? '· 单次已调整' : ''}}</view
+  ><view class="title">{{o.course.name}}</view
+  ><view wx:if="{{o.cancelled}}" class="notice"
+    >本次课程已取消，可在下方恢复原安排。</view
+  ><view wx:if="{{holiday}}" class="notice"
+    >原日期为校历停课日，普通课程不显示。可以通过“调整本次”显式安排补课。</view
+  ><view class="panel"
+    ><view class="line">日期　{{o.date}} · 星期{{day}}</view
+    ><view class="line">节次　第 {{o.sections}} 节</view
+    ><view class="line">时间　{{time}}</view
+    ><view class="line">教室　{{o.room || '待定'}}</view
+    ><view class="line">班级　{{o.course.className || '未填写'}}</view
+    ><view class="line"
+      >教师　{{o.course.teachers.length ? o.course.teachers : '未填写'}}</view
+    ><view class="line">周次　第 {{weekText}} 周</view
+    ><view class="line" wx:if="{{o.course.note}}">备注　{{o.course.note}}</view
+    ><view class="muted" wx:if="{{o.adjusted}}"
+      >原安排日期：{{original}}</view
+    ></view
+  ><button class="primary" bindtap="adjust">调整本次</button
+  ><button wx:if="{{o.adjusted}}" bindtap="restore">恢复原安排</button
+  ><button bindtap="edit">编辑基础课程</button
+  ><view wx:if="{{adjusting}}" class="panel"
+    ><view style="font-size: 32rpx">仅调整 {{original}} 这一次</view
+    ><view class="muted">可以跨周移动，不影响其他周。</view
+    ><view class="label">目标日期（本学期内）</view
+    ><picker
+      mode="date"
+      value="{{targetDate}}"
+      start="{{min}}"
+      end="{{max}}"
+      bindchange="date"
+      ><view class="picker">{{targetDate}} ▾</view></picker
+    ><view class="label">节次（逗号分隔，例如 3,4）</view
+    ><input
+      value="{{targetSections}}"
+      data-field="targetSections"
+      bindinput="input"
+    /><view class="label">教室</view
+    ><input
+      value="{{targetRoom}}"
+      maxlength="500"
+      data-field="targetRoom"
+      bindinput="input"
+    /><button class="primary" bindtap="save">保存本次调整</button
+    ><button class="danger" data-cancel="yes" bindtap="save">
+      取消本次课程</button
+    ><button bindtap="close">收起</button></view
+  ></view
+><view wx:else class="empty muted">课程暂不可用，请返回课表。</view>

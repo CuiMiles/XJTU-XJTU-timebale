@@ -1,0 +1,166 @@
+.heading {
+  padding: 28rpx 24rpx 0;
+  background: #f7f9fc;
+}
+.brand {
+  font-size: 38rpx;
+  font-weight: 650;
+}
+.season {
+  font-size: 22rpx;
+  font-weight: 400;
+  color: #8193a4;
+  margin-left: 12rpx;
+}
+.today {
+  font-size: 24rpx;
+  color: #3d6e94;
+  padding: 12rpx;
+  background: #e7eff6;
+  border-radius: 14rpx;
+}
+.weekbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.weekbar button {
+  width: 64rpx;
+  margin: 16rpx 0;
+  font-size: 36rpx;
+  line-height: 1.5;
+  background: transparent;
+}
+.week {
+  font-size: 32rpx;
+  font-weight: 600;
+}
+.dayhead {
+  display: flex;
+  background: #fff;
+  padding: 16rpx 0;
+  min-height: 106rpx;
+}
+.axis {
+  width: 64rpx;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 17rpx;
+  color: #98a3ad;
+}
+.day {
+  flex: 1;
+  text-align: center;
+  font-size: 26rpx;
+}
+.date {
+  font-size: 21rpx;
+  color: #8b99a7;
+  margin-top: 6rpx;
+}
+.active {
+  color: #2e709f;
+  font-weight: bold;
+}
+.active .date {
+  color: #2e709f;
+}
+.holiday {
+  font-size: 17rpx;
+  color: #b48b54;
+}
+.grid-scroll {
+  height: calc(100vh - 300rpx);
+}
+.grid {
+  position: relative;
+  height: 1276rpx;
+  background: #fff;
+}
+.grid-row {
+  height: 116rpx;
+  display: flex;
+}
+.grid-row .axis {
+  padding-top: 16rpx;
+}
+.section {
+  font-size: 26rpx;
+  color: #718393;
+  margin-bottom: 2rpx;
+}
+.cell {
+  flex: 1;
+  border-top: 1rpx solid #f0f3f6;
+  border-left: 1rpx solid #f6f8fa;
+}
+.courses {
+  position: absolute;
+  left: 64rpx;
+  right: 0;
+  top: 0;
+}
+.card {
+  position: absolute;
+  padding: 3rpx;
+}
+.card-inner {
+  height: 100%;
+  border-radius: 12rpx;
+  padding: 11rpx 6rpx;
+  overflow: hidden;
+  color: #365063;
+}
+.course-name {
+  font-size: 23rpx;
+  line-height: 1.35;
+  font-weight: 600;
+  word-break: break-all;
+}
+.room {
+  font-size: 20rpx;
+  line-height: 1.4;
+  margin-top: 9rpx;
+  word-break: break-all;
+}
+.badge {
+  font-size: 17rpx;
+  margin-top: 6rpx;
+  color: #586a79;
+}
+.footnote {
+  text-align: center;
+  font-size: 21rpx;
+  line-height: 1.8;
+  color: #97a3ae;
+  padding: 24rpx;
+}
+.week-empty {
+  text-align: center;
+  padding: 14rpx;
+  font-size: 23rpx;
+  color: #879baa;
+}
+.mask {
+  position: fixed;
+  top: 0; right: 0; bottom: 0; left: 0;
+  background: rgba(28, 45, 60, 0.28);
+  z-index: 10;
+  display: flex;
+  align-items: flex-end;
+}
+.sheet {
+  background: white;
+  border-radius: 30rpx 30rpx 0 0;
+  padding: 32rpx;
+  width: 100%;
+  max-height: 75vh;
+  overflow-y: auto;
+  padding-bottom: 60rpx;
+}
+
+.course-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.tight .course-name { -webkit-line-clamp: 1; }
+.room { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tight .room { margin-top: 5rpx; }
+.tight .badge { margin-top: 3rpx; font-size: 16rpx; }

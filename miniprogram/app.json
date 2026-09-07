@@ -1,0 +1,27 @@
+{
+  "pages": [
+    "pages/home/home",
+    "pages/manage/manage",
+    "pages/editor/editor",
+    "pages/transfer/transfer",
+    "pages/detail/detail"
+  ],
+  "window": {
+    "navigationBarTitleText": "小交课表",
+    "navigationBarBackgroundColor": "#f7f9fc",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f7f9fc"
+  },
+  "tabBar": {
+    "color": "#8893a1",
+    "selectedColor": "#3d6e94",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      { "pagePath": "pages/home/home", "text": "课表" },
+      { "pagePath": "pages/manage/manage", "text": "管理" }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

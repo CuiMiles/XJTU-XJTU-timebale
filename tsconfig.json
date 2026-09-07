@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "module": "CommonJS",
+    "strict": true,
+    "noImplicitThis": false,
+    "types": ["miniprogram-api-typings"],
+    "skipLibCheck": true,
+    "lib": ["ES2017"],
+    "rootDir": "miniprogram"
+  },
+  "include": ["miniprogram/**/*.ts"]
+}

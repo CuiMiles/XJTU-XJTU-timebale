@@ -1,0 +1,4 @@
+{
+  "desc": "个人本地课表，不参与搜索",
+  "rules": [{ "action": "disallow", "page": "*" }]
+}

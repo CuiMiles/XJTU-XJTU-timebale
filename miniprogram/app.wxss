@@ -1,0 +1,136 @@
+page {
+  background: #f7f9fc;
+  color: #263b4c;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 28rpx;
+}
+view,
+text,
+button,
+input,
+textarea {
+  box-sizing: border-box;
+}
+button {
+  font-size: 27rpx;
+  background: #e8eff5;
+  color: #365d7d;
+  border-radius: 18rpx;
+  margin: 16rpx 0;
+  line-height: 2.8;
+}
+button::after {
+  border: 0;
+}
+button.primary {
+  background: #3d6e94;
+  color: white;
+}
+button.danger {
+  color: #ae5252;
+  background: #faecec;
+}
+button[disabled] {
+  opacity: 0.4;
+}
+.page {
+  padding: 32rpx 28rpx 70rpx;
+}
+.title {
+  font-size: 42rpx;
+  font-weight: 650;
+  letter-spacing: 2rpx;
+  margin: 12rpx 0;
+}
+.muted {
+  color: #82909e;
+  font-size: 24rpx;
+  line-height: 1.8;
+}
+.panel {
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 28rpx;
+  margin: 24rpx 0;
+}
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+.label {
+  font-size: 26rpx;
+  color: #53697a;
+  margin: 26rpx 0 12rpx;
+}
+input,
+textarea,
+.picker {
+  background: #f3f6f9;
+  border-radius: 14rpx;
+  padding: 20rpx;
+  width: 100%;
+  font-size: 28rpx;
+}
+input {
+  height: 84rpx;
+}
+textarea {
+  height: 360rpx;
+  line-height: 1.6;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+.chip {
+  padding: 16rpx 20rpx;
+  border-radius: 14rpx;
+  background: #f0f3f7;
+  color: #6d7f90;
+}
+.chip.selected {
+  background: #d9e9f6;
+  color: #275a80;
+}
+.notice {
+  padding: 20rpx;
+  background: #fff4db;
+  color: #8a6c37;
+  border-radius: 16rpx;
+  font-size: 24rpx;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+.empty {
+  text-align: center;
+  padding: 70rpx 32rpx;
+}
+.empty-art {
+  width: 128rpx;
+  height: 142rpx;
+  background: #e1edf7;
+  border-radius: 28rpx;
+  margin: 0 auto 30rpx;
+  transform: rotate(-7deg);
+  font-size: 70rpx;
+  line-height: 142rpx;
+  color: #7295b2;
+}
+.line {
+  padding: 18rpx 0;
+  line-height: 1.7;
+  border-bottom: 1rpx solid #f0f3f6;
+  word-break: break-all;
+}
+.small {
+  font-size: 23rpx;
+}
+.link {
+  color: #3d6e94;
+}
+.spacer {
+  height: 20rpx;
+}
