@@ -14,9 +14,12 @@ export function stamp(date: string): number {
 export function addDays(date: string, n: number): string {
   return new Date(stamp(date) + n * DAY).toISOString().slice(0, 10);
 }
-export function today(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+// 固定北京时间（UTC+8），不依赖设备所在时区。
+export function today(now: number = Date.now()): string {
+  return new Date(now + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+export function shortDate(date: string): string {
+  return `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`;
 }
 export function weekOf(date: string): number {
   return Math.floor((stamp(date) - stamp(SEMESTER.start)) / DAY / 7) + 1;

@@ -1,33 +1,38 @@
-<view class="heading"
-  ><view class="row"
-    ><view
-      ><view class="brand">小交课表 <text class="season">2026 秋</text></view
-      ><view class="muted">{{todayLabel}} · 给每一天，留一点从容</view></view
-    ><text class="today" bindtap="current">{{status}}</text></view
-  ><view class="weekbar"
-    ><button bindtap="prev" disabled="{{week === 1}}">‹</button
-    ><picker range="{{weeks}}" value="{{week - 1}}" bindchange="pick"
-      ><view class="week"
-        >第 {{week}} 周
-        <text class="muted">{{week > 16 ? '考试周' : '教学周'}} ▾</text></view
-      ></picker
-    ><button bindtap="next" disabled="{{week === 18}}">›</button></view
-  ></view
->
+<view class="heading">
+  <view class="week-summary">
+    <picker range="{{weeks}}" value="{{week - 1}}" bindchange="pick">
+      <view class="week">第{{week}}周 <text class="chevron">▾</text></view>
+    </picker>
+    <text class="today" bindtap="current">{{todayLabel}} · {{status}}</text>
+  </view>
+  <view class="week-controls">
+    <button bindtap="prev" disabled="{{week === 1}}" aria-label="上一周">
+      ‹
+    </button>
+    <button bindtap="next" disabled="{{week === 18}}" aria-label="下一周">
+      ›
+    </button>
+  </view>
+</view>
 <view wx:if="{{loadError}}" class="page"
   ><view class="notice"
     >本地数据读取失败。原数据未覆盖，可在管理页导出原始数据或恢复备份。</view
   ><button bindtap="manage">前往管理</button></view
 >
 <view wx:elif="{{empty}}" class="empty"
-  ><view class="empty-art">▦</view><view class="title">把新学期，装进口袋</view
+  ><view class="empty-art">▦</view><view class="title">还没有课程</view
   ><view class="muted"
-    >导入你的课表，或从第一门课开始。<br />数据只保存在这台设备，无需登录。</view
+    >导入课表或手动添加课程。<br />数据只保存在这台设备，无需登录。</view
   ><button class="primary" bindtap="import">导入课表</button
   ><button bindtap="add">手动添加</button
   ><view class="muted">学生个人工具 · 非西安交通大学官方产品</view></view
 >
-<block wx:else
+<view
+  wx:else
+  class="schedule"
+  bindtouchstart="touchStart"
+  bindtouchend="touchEnd"
+  bindtouchcancel="touchCancel"
   ><view class="dayhead"
     ><view class="axis">节次</view
     ><view
@@ -37,8 +42,7 @@
       ><view>{{item.name}}</view><view class="date">{{item.label}}</view
       ><text wx:if="{{item.holiday}}" class="holiday">停课</text></view
     ></view
-  ><view wx:if="{{noClasses}}" class="week-empty"
-    >这一周没有安排，享受自由时光 ☁</view
+  ><view wx:if="{{noClasses}}" class="week-empty">本周暂无课程</view
   ><scroll-view scroll-y class="grid-scroll"
     ><view class="grid"
       ><view wx:for="{{rows}}" wx:key="n" class="grid-row"
@@ -50,11 +54,13 @@
         ><view
           wx:for="{{cards}}"
           wx:key="key"
-          class="card"
+          class="card {{item.joinBefore ? 'join-before' : ''}} {{item.joinAfter ? 'join-after' : ''}}"
           style="top:{{item.top}}rpx;height:{{item.height}}rpx;left:{{item.day * 100 / 7}}%;width:14.285714%;"
           data-index="{{index}}"
           bindtap="open"
-          ><view class="card-inner {{item.height === 110 ? 'tight' : ''}}" style="background:{{item.color}}"
+          ><view
+            class="card-inner {{item.height === 110 ? 'tight' : ''}}"
+            style="background:{{item.color}}"
             ><view class="course-name">{{item.name}}</view
             ><view class="room">{{item.room || '教室待定'}}</view
             ><view class="badge" wx:if="{{item.conflicts > 1}}"
@@ -70,7 +76,7 @@
       '点击课程查看详情 · 重叠课程点击后可逐一查看'}}<br />个人课表 ·
       非官方产品</view
     ></scroll-view
-  ></block
+  ></view
 >
 <view wx:if="{{selection.length}}" class="mask" bindtap="close"
   ><view class="sheet" catchtap="noop"

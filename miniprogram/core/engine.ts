@@ -48,10 +48,11 @@ export function color(name: string): string {
 export function blocks(items: Occurrence[]) {
   const groups: any[] = [];
   items.forEach((o) => {
-    let start = o.sections[0],
+    const sections = [...o.sections].sort((a, b) => a - b);
+    let start = sections[0],
       end = start;
     const emit = () => groups.push({ o, start, end });
-    o.sections.slice(1).forEach((n) => {
+    sections.slice(1).forEach((n) => {
       if (n === end + 1) end = n;
       else {
         emit();
@@ -60,7 +61,36 @@ export function blocks(items: Occurrence[]) {
     });
     emit();
   });
+  const sameLesson = (a: any, b: any): boolean =>
+    a.o.date === b.o.date &&
+    a.o.originalDate === b.o.originalDate &&
+    a.o.course.name === b.o.course.name &&
+    a.o.room === b.o.room &&
+    a.o.course.className === b.o.course.className &&
+    a.o.course.note === b.o.course.note &&
+    a.o.adjusted === b.o.adjusted &&
+    JSON.stringify(a.o.course.teachers) ===
+      JSON.stringify(b.o.course.teachers) &&
+    JSON.stringify(a.o.course.weeks) === JSON.stringify(b.o.course.weeks);
+  const unopposed = (b: any): boolean =>
+    !groups.some(
+      (x) =>
+        x !== b &&
+        x.o.date === b.o.date &&
+        x.start <= b.end &&
+        x.end >= b.start,
+    );
   return groups.map((b, i) => {
+    const joinBefore =
+      unopposed(b) &&
+      groups.some(
+        (x) => sameLesson(x, b) && x.end + 1 === b.start && unopposed(x),
+      );
+    const joinAfter =
+      unopposed(b) &&
+      groups.some(
+        (x) => sameLesson(x, b) && b.end + 1 === x.start && unopposed(x),
+      );
     const overlaps = groups.filter(
       (x) => x.o.date === b.o.date && x.start <= b.end && x.end >= b.start,
     );
@@ -68,7 +98,9 @@ export function blocks(items: Occurrence[]) {
       ...b,
       key: i,
       top: (b.start - 1) * 116,
-      height: (b.end - b.start + 1) * 116 - 6,
+      height: (b.end - b.start + 1) * 116 - (joinAfter ? 0 : 6),
+      joinBefore,
+      joinAfter,
       conflicts: overlaps.length,
       color: color(b.o.course.name),
     };

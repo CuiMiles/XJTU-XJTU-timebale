@@ -194,3 +194,27 @@ test("empty schedule safe", () => {
   assert.deepEqual(schedule(storage.empty(), 1), []);
   assert.deepEqual(blocks([]), []);
 });
+
+test("Beijing date changes at UTC 16:00 regardless of device timezone", () => {
+  assert.equal(cal.today(Date.parse("2026-09-13T15:59:59Z")), "2026-09-13");
+  assert.equal(cal.today(Date.parse("2026-09-13T16:00:00Z")), "2026-09-14");
+  assert.equal(cal.today(Date.parse("2026-12-31T16:00:00Z")), "2027-01-01");
+  assert.equal(cal.shortDate("2026-09-01"), "9/1");
+});
+test("three consecutive sections span all three rows, split entries connect without changing identity", () => {
+  const s = data();
+  s.courses[0].sections = [1, 2, 3];
+  let bs = blocks(schedule(s, 1));
+  assert.equal(bs.length, 1);
+  assert.equal(bs[0].height, 342);
+  assert.equal(bs[0].end, 3);
+  s.courses[0].sections = [1, 2];
+  s.courses.push({ ...s.courses[0], id: "c2", sections: [3] });
+  bs = blocks(schedule(s, 1));
+  assert.equal(bs[0].joinAfter, true);
+  assert.equal(bs[1].joinBefore, true);
+  assert.equal(bs[0].top + bs[0].height, bs[1].top);
+  assert.equal(bs[1].o.course.id, "c2");
+  s.courses[1].room = "different";
+  assert.equal(blocks(schedule(s, 1))[0].joinAfter, false);
+});

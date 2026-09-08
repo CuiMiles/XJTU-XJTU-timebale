@@ -1,39 +1,56 @@
-.heading {
-  padding: 28rpx 24rpx 0;
-  background: #f7f9fc;
-}
-.brand {
-  font-size: 38rpx;
-  font-weight: 650;
-}
-.season {
-  font-size: 22rpx;
-  font-weight: 400;
-  color: #8193a4;
-  margin-left: 12rpx;
-}
-.today {
-  font-size: 24rpx;
-  color: #3d6e94;
-  padding: 12rpx;
-  background: #e7eff6;
-  border-radius: 14rpx;
-}
-.weekbar {
+page {
+  height: 100%;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
 }
-.weekbar button {
-  width: 64rpx;
-  margin: 16rpx 0;
-  font-size: 36rpx;
-  line-height: 1.5;
-  background: transparent;
+.heading {
+  padding: 12rpx 20rpx;
+  background: #f7f9fc;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.week-summary {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
 }
 .week {
   font-size: 32rpx;
   font-weight: 600;
+  white-space: nowrap;
+}
+.chevron {
+  font-size: 20rpx;
+  color: #8193a4;
+}
+.today {
+  font-size: 23rpx;
+  color: #718393;
+}
+.week-controls {
+  display: flex;
+}
+.week-controls button {
+  width: 60rpx;
+  height: 64rpx;
+  padding: 0;
+  margin: 0;
+  font-size: 38rpx;
+  line-height: 60rpx;
+  background: transparent;
+}
+.schedule {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.month {
+  font-size: 23rpx;
+  align-self: center;
+  color: #53697a;
 }
 .dayhead {
   display: flex;
@@ -70,7 +87,9 @@
   color: #b48b54;
 }
 .grid-scroll {
-  height: calc(100vh - 300rpx);
+  flex: 1;
+  height: 0;
+  min-height: 0;
 }
 .grid {
   position: relative;
@@ -143,7 +162,10 @@
 }
 .mask {
   position: fixed;
-  top: 0; right: 0; bottom: 0; left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   background: rgba(28, 45, 60, 0.28);
   z-index: 10;
   display: flex;
@@ -159,8 +181,40 @@
   padding-bottom: 60rpx;
 }
 
-.course-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
-.tight .course-name { -webkit-line-clamp: 1; }
-.room { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tight .room { margin-top: 5rpx; }
-.tight .badge { margin-top: 3rpx; font-size: 16rpx; }
+.course-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+.tight .course-name {
+  -webkit-line-clamp: 1;
+}
+.room {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tight .room {
+  margin-top: 5rpx;
+}
+.tight .badge {
+  margin-top: 3rpx;
+  font-size: 16rpx;
+}
+
+/* 相邻的同课数据条目连接外观，仍保留各自的点击和调课身份。 */
+.join-before {
+  padding-top: 0;
+}
+.join-after {
+  padding-bottom: 0;
+}
+.join-before .card-inner {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+.join-after .card-inner {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}

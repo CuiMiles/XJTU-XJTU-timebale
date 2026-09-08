@@ -103,3 +103,38 @@ test("invalid import never creates preview, example creates reviewable preview",
   p.input({ detail: { value: "{}" } });
   assert.equal(p.data.preview, false);
 });
+
+test("horizontal swipes change weeks; vertical scrolling, taps, cancelled gestures and boundaries do not", () => {
+  global.wx = { getStorageSync: () => undefined };
+  const p = instance("pages/home/home");
+  p.setData({ week: 3 });
+  p.refresh();
+  assert.equal(p.data.month, "9月");
+  assert.equal(p.data.days[3].label, "10/1");
+  const swipe = (x, y) => {
+    p.touchStart({ touches: [{ clientX: 200, clientY: 200 }] });
+    p.touchEnd({ changedTouches: [{ clientX: x, clientY: y }] });
+  };
+  swipe(100, 205);
+  assert.equal(p.data.week, 4);
+  assert.equal(p.data.month, "10月");
+  swipe(300, 205);
+  assert.equal(p.data.week, 3);
+  swipe(190, 400);
+  assert.equal(p.data.week, 3);
+  swipe(195, 200);
+  assert.equal(p.data.week, 3);
+  p.touchStart({ touches: [{ clientX: 200, clientY: 200 }] });
+  p.touchCancel();
+  p.touchEnd({ changedTouches: [{ clientX: 10, clientY: 200 }] });
+  assert.equal(p.data.week, 3);
+  p.setData({ week: 1 });
+  swipe(300, 200);
+  assert.equal(p.data.week, 1);
+  p.setData({ week: 18 });
+  swipe(100, 200);
+  assert.equal(p.data.week, 18);
+  p.setData({ week: 3, detail: {} });
+  swipe(100, 200);
+  assert.equal(p.data.week, 3);
+});

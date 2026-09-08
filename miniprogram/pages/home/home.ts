@@ -7,6 +7,7 @@ import {
   HOLIDAYS,
   timeLabel,
   weekdayOf,
+  shortDate,
 } from "../../core/calendar";
 import { schedule, blocks } from "../../core/engine";
 import { read, error } from "../../core/storage";
@@ -24,10 +25,13 @@ Page({
     noClasses: false,
     status: "",
     loadError: false,
-    todayLabel: today(),
+    todayLabel: "",
+    month: "",
     detail: null as any,
     selection: [] as any[],
   },
+  touchOrigin: null as { x: number; y: number } | null,
+  suppressTapUntil: 0,
   onLoad() {
     this.setData({ week: Math.max(1, Math.min(18, weekOf(today()))) });
   },
@@ -38,14 +42,15 @@ Page({
     try {
       const s = read(),
         w = this.data.week,
-        actual = weekOf(today());
+        currentDate = today(),
+        actual = weekOf(currentDate);
       const days = DAYS.map((d, i) => {
         const date = dateOf(w, i + 1);
         return {
           name: d,
           date,
-          label: date.slice(5).replace("-", "/"),
-          today: date === today(),
+          label: shortDate(date),
+          today: date === currentDate,
           holiday: HOLIDAYS.includes(date),
         };
       });
@@ -70,15 +75,9 @@ Page({
           name: b.o.course.name,
           room: b.o.room,
         })),
-        status:
-          actual < 1
-            ? "尚未开学"
-            : actual > 18
-              ? "学期已结束"
-              : w === actual
-                ? "本周"
-                : `当前第${actual}周`,
-        todayLabel: today(),
+        status: w === actual ? "本周" : "非本周",
+        todayLabel: `今天周${DAYS[weekdayOf(currentDate) - 1]}`,
+        month: `${Number(dateOf(w, 1).slice(5, 7))}月`,
       });
     } catch (e) {
       this.setData({ loadError: true });
@@ -105,7 +104,36 @@ Page({
     this.setData({ week: Math.max(1, Math.min(18, weekOf(today()))) });
     this.refresh();
   },
+  touchStart(e: any) {
+    this.touchOrigin =
+      e.touches.length === 1
+        ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
+        : null;
+  },
+  touchCancel() {
+    this.touchOrigin = null;
+  },
+  touchEnd(e: any) {
+    const start = this.touchOrigin;
+    this.touchOrigin = null;
+    if (
+      !start ||
+      !e.changedTouches.length ||
+      this.data.detail ||
+      this.data.selection.length
+    )
+      return;
+    const dx = e.changedTouches[0].clientX - start.x;
+    const dy = e.changedTouches[0].clientY - start.y;
+    // 明确的横向手势才切周，保留纵向滚动与轻点。
+    if (Math.abs(dx) >= 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      this.suppressTapUntil = Date.now() + 350;
+      if (dx < 0) this.next();
+      else this.prev();
+    }
+  },
   open(e: any) {
+    if (Date.now() < this.suppressTapUntil) return;
     const b = this.data.cards[Number(e.currentTarget.dataset.index)];
     const options = this.data.cards.filter(
       (x: any) => x.day === b.day && x.start <= b.end && x.end >= b.start,
