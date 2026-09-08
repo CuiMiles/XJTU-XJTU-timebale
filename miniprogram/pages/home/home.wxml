@@ -1,16 +1,19 @@
-<view class="heading" style="padding-top:{{navTop}}px;">
-  <view
-    class="nav-row"
-    style="min-height:{{navHeight}}px;padding-right:{{navRight}}px;"
-  >
+<view
+  class="heading"
+  style="padding-top:{{navTop}}px;padding-right:{{navRight}}px;"
+>
+  <view class="nav-row">
     <picker range="{{weeks}}" value="{{week - 1}}" bindchange="pick">
-      <view class="week">第{{week}}周 <text class="chevron">⌄</text></view>
+      <view class="week"
+        >第{{week}}周<text wx:if="{{!isCurrentWeek}}" class="week-status"
+          >（非本周）</text
+        ><text class="chevron">⌄</text></view
+      >
     </picker>
   </view>
-  <view class="semester-row">
-    <text class="semester">2026-2027秋 · 第一学期</text>
-    <text class="today" bindtap="current">{{todayLabel}} · {{status}}</text>
-  </view>
+  <view class="semester-row"
+    ><text class="semester">2026-2027秋 · 第一学期</text></view
+  >
 </view>
 <view wx:if="{{loadError}}" class="page"
   ><view class="notice"
@@ -33,8 +36,14 @@
   bindtouchcancel="touchCancel"
 >
   <view class="dayhead">
-    <view class="axis month">{{month}}</view>
-    <view wx:for="{{days}}" wx:key="date" class="day">
+    <view class="axis month" bindtap="current" aria-label="回到本周"
+      >{{month}}</view
+    >
+    <view
+      wx:for="{{days}}"
+      wx:key="date"
+      class="day {{item.today ? 'day-today' : ''}}"
+    >
       <view class="weekday">{{item.name}}</view>
       <view class="date {{item.today ? 'active' : ''}}"
         >{{item.label}}<view wx:if="{{item.today}}" class="today-dot"

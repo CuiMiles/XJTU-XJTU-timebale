@@ -167,3 +167,34 @@ test("merged card details cover the full lesson and adjustments target the selec
   p.adjustPart({ currentTarget: { dataset: { index: 1 } } });
   assert.ok(target.includes("id=b&date=2026-09-14"));
 });
+
+test("today header uses Beijing date and disappears on other weeks; top gap excludes capsule offset", () => {
+  const now = Date.now;
+  Date.now = () => Date.parse("2026-09-13T16:30:00Z");
+  global.wx = {
+    getStorageSync: () => undefined,
+    getWindowInfo: () => ({ statusBarHeight: 44, windowWidth: 375 }),
+    getMenuButtonBoundingClientRect: () => ({ top: 56, height: 32, left: 278 }),
+  };
+  try {
+    const p = instance("pages/home/home");
+    p.onLoad();
+    p.refresh();
+    assert.equal(p.data.navTop, 46);
+    assert.equal(p.data.isCurrentWeek, true);
+    assert.deepEqual(
+      p.data.days.filter((d) => d.today).map((d) => d.date),
+      ["2026-09-14"],
+    );
+    p.next();
+    assert.equal(p.data.isCurrentWeek, false);
+    assert.equal(
+      p.data.days.some((d) => d.today),
+      false,
+    );
+    p.current();
+    assert.equal(p.data.isCurrentWeek, true);
+  } finally {
+    Date.now = now;
+  }
+});

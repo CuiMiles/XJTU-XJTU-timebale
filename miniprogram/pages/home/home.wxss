@@ -12,7 +12,7 @@ page {
 }
 .nav-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   box-sizing: border-box;
 }
 .week {
@@ -32,7 +32,7 @@ page {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 14rpx;
+  margin-top: 6rpx;
   gap: 10rpx;
 }
 .semester {
@@ -40,11 +40,11 @@ page {
   color: #939b97;
   white-space: nowrap;
 }
-.today {
-  font-size: 20rpx;
-  color: #7d8d84;
-  white-space: nowrap;
-  padding: 6rpx 0;
+.week-status {
+  font-size: 23rpx;
+  font-weight: 400;
+  color: #949e97;
+  letter-spacing: 0;
 }
 .schedule {
   flex: 1;
@@ -72,6 +72,15 @@ page {
   flex: 1;
   min-width: 0;
   text-align: center;
+}
+.day-today {
+  background: #eaf1e9;
+  border-radius: 12rpx;
+}
+.day-today .weekday,
+.day-today .date {
+  color: #426b50;
+  font-weight: 500;
 }
 .weekday {
   font-size: 20rpx;

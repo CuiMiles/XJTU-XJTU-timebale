@@ -7,7 +7,6 @@ Page({
     data: {
         week: 1,
         navTop: 24,
-        navHeight: 40,
         navRight: 100,
         showParts: false,
         weeks: Array.from({ length: 18 }, (_, i) => `第${i + 1}周${i >= 16 ? " · 考试" : ""}`),
@@ -16,9 +15,8 @@ Page({
         cards: [],
         empty: true,
         noClasses: false,
-        status: "",
+        isCurrentWeek: false,
         loadError: false,
-        todayLabel: "",
         month: "",
         detail: null,
         selection: [],
@@ -27,16 +25,15 @@ Page({
     suppressTapUntil: 0,
     onLoad() {
         try {
-            const capsule = wx.getMenuButtonBoundingClientRect();
             const window = wx.getWindowInfo();
-            this.setData({
-                navTop: capsule.top,
-                navHeight: capsule.height,
-                navRight: window.windowWidth - capsule.left + 12,
-            });
+            // 只留状态栏和2px间距，标题不再按胶囊高度垂直居中。
+            this.setData({ navTop: Math.max(0, window.statusBarHeight || 0) + 2 });
+            const capsule = wx.getMenuButtonBoundingClientRect();
+            if (capsule.left > 0)
+                this.setData({ navRight: window.windowWidth - capsule.left + 8 });
         }
         catch (_a) {
-            /* 模拟器不支持胶囊信息时使用保守留白 */
+            /* 无系统尺寸时保留默认安全区域。 */
         }
         this.setData({ week: Math.max(1, Math.min(18, (0, calendar_1.weekOf)((0, calendar_1.today)()))) });
     },
@@ -72,8 +69,7 @@ Page({
                     end: t.split("-")[1],
                 })),
                 cards: (0, engine_1.blocks)(items).map((b) => (Object.assign(Object.assign({}, b), { day: days.findIndex((d) => d.date === b.o.date), id: b.o.course.id, original: b.o.originalDate, name: b.o.course.name, sectionText: (0, calendar_1.sectionLabel)(b.o.sections), room: b.o.room }))),
-                status: w === actual ? "本周" : "非本周",
-                todayLabel: `今天周${calendar_1.DAYS[(0, calendar_1.weekdayOf)(currentDate) - 1]}`,
+                isCurrentWeek: w === actual,
                 month: `${Number((0, calendar_1.dateOf)(w, 1).slice(5, 7))}月`,
             });
         }
