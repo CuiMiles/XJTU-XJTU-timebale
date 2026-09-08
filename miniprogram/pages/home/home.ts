@@ -7,13 +7,17 @@ import {
   HOLIDAYS,
   timeLabel,
   weekdayOf,
-  shortDate,
+  sectionLabel,
 } from "../../core/calendar";
 import { schedule, blocks } from "../../core/engine";
 import { read, error } from "../../core/storage";
 Page({
   data: {
     week: 1,
+    navTop: 24,
+    navHeight: 40,
+    navRight: 100,
+    showParts: false,
     weeks: Array.from(
       { length: 18 },
       (_, i) => `第${i + 1}周${i >= 16 ? " · 考试" : ""}`,
@@ -33,6 +37,18 @@ Page({
   touchOrigin: null as { x: number; y: number } | null,
   suppressTapUntil: 0,
   onLoad() {
+    try {
+      const capsule = wx.getMenuButtonBoundingClientRect();
+      const window = wx.getWindowInfo();
+      this.setData({
+        navTop: capsule.top,
+        navHeight: capsule.height,
+        navRight: window.windowWidth - capsule.left + 12,
+      });
+    } catch {
+      /* 模拟器不支持胶囊信息时使用保守留白 */
+    }
+
     this.setData({ week: Math.max(1, Math.min(18, weekOf(today()))) });
   },
   onShow() {
@@ -49,13 +65,16 @@ Page({
         return {
           name: d,
           date,
-          label: shortDate(date),
+          label: String(Number(date.slice(8))),
+          monthHint:
+            date.slice(8) === "01" ? `${Number(date.slice(5, 7))}月` : "",
           today: date === currentDate,
           holiday: HOLIDAYS.includes(date),
         };
       });
       const items = schedule(s, w);
       this.setData({
+        showParts: false,
         detail: null,
         selection: [],
         loadError: false,
@@ -73,6 +92,7 @@ Page({
           id: b.o.course.id,
           original: b.o.originalDate,
           name: b.o.course.name,
+          sectionText: sectionLabel(b.o.sections),
           room: b.o.room,
         })),
         status: w === actual ? "本周" : "非本周",
@@ -140,17 +160,25 @@ Page({
     );
     const unique = options.filter(
       (x: any, i: number) =>
-        options.findIndex(
-          (y: any) => y.id === x.id && y.original === x.original,
-        ) === i,
+        options.findIndex((y: any) => y.key === x.key) === i,
     );
     if (unique.length > 1) this.setData({ selection: unique });
     else this.go(b);
   },
   go(b: any) {
     this.setData({
+      showParts: false,
       detail: {
         ...b.o,
+        members: b.members,
+        sectionText: sectionLabel(b.o.sections),
+        teachers: b.o.course.teachers.join("、"),
+        parts: b.members.map((m: any) => ({
+          id: m.course.id,
+          original: m.originalDate,
+          sections: sectionLabel(m.sections),
+          weeks: m.course.weeks.join("、"),
+        })),
         day: DAYS[weekdayOf(b.o.date) - 1],
         time: timeLabel(b.o.date, b.o.sections),
         weeks: b.o.course.weeks.join("、"),
@@ -169,8 +197,19 @@ Page({
   },
   adjustDetail() {
     const d = this.data.detail;
+    if (d.members.length > 1) {
+      this.setData({ showParts: !this.data.showParts });
+      return;
+    }
+    this.navigateAdjustment(d.members[0].course.id, d.members[0].originalDate);
+  },
+  adjustPart(e: any) {
+    const p = this.data.detail.parts[Number(e.currentTarget.dataset.index)];
+    this.navigateAdjustment(p.id, p.original);
+  },
+  navigateAdjustment(id: string, original: string) {
     wx.navigateTo({
-      url: `/pages/detail/detail?id=${encodeURIComponent(d.course.id)}&date=${d.originalDate}&adjust=1`,
+      url: `/pages/detail/detail?id=${encodeURIComponent(id)}&date=${original}&adjust=1`,
     });
   },
   noop() {},

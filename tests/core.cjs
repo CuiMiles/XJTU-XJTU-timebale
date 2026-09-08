@@ -211,10 +211,75 @@ test("three consecutive sections span all three rows, split entries connect with
   s.courses[0].sections = [1, 2];
   s.courses.push({ ...s.courses[0], id: "c2", sections: [3] });
   bs = blocks(schedule(s, 1));
-  assert.equal(bs[0].joinAfter, true);
-  assert.equal(bs[1].joinBefore, true);
-  assert.equal(bs[0].top + bs[0].height, bs[1].top);
-  assert.equal(bs[1].o.course.id, "c2");
+  assert.equal(bs.length, 1);
+  assert.equal(bs[0].height, 342);
+  assert.equal(bs[0].members[1].course.id, "c2");
   s.courses[1].room = "different";
-  assert.equal(blocks(schedule(s, 1))[0].joinAfter, false);
+  assert.equal(blocks(schedule(s, 1)).length, 2);
+});
+
+test("engineering ethics adjacent records merge despite teacher order and week-list differences", () => {
+  const s = data();
+  Object.assign(s.courses[0], {
+    name: "工程伦理（二）",
+    room: "5-1W101",
+    className: "2班",
+    teachers: ["金莉", "李永东", "邱岩", "王迪", "王萍"],
+    sections: [9, 10],
+    weeks: [1, 2],
+  });
+  s.courses.push({
+    ...s.courses[0],
+    id: "ethics-11",
+    name: " 工程伦理(二) ",
+    sections: [11],
+    weeks: [1, 3],
+    teachers: [...s.courses[0].teachers].reverse(),
+  });
+  const before = JSON.stringify(s);
+  const b = blocks(schedule(s, 1));
+  assert.equal(b.length, 1);
+  assert.deepEqual(b[0].o.sections, [9, 10, 11]);
+  assert.equal(b[0].height, 342);
+  assert.equal(b[0].members.length, 2);
+  assert.equal(JSON.stringify(s), before);
+  assert.deepEqual(blocks(schedule(s, 2))[0].o.sections, [9, 10]);
+  assert.equal(cal.sectionLabel([9, 10]), "9–10");
+  assert.equal(cal.timeLabel("2026-09-14", [9, 10]), "19:40–21:30");
+  assert.equal(cal.timeLabel("2026-09-14", [9, 10, 11]), "19:40–22:30");
+  assert.equal(
+    cal.timeLabel("2026-09-14", [1, 3]),
+    "08:00–08:50 / 10:10–11:00",
+  );
+  s.adjustments = [
+    {
+      courseId: "ethics-11",
+      originalDate: "2026-09-14",
+      date: "2026-09-15",
+      sections: [11],
+      room: "5-1W101",
+      cancelled: false,
+    },
+  ];
+  assert.equal(blocks(schedule(s, 1)).length, 2);
+});
+test("merged lesson retains overlapping different courses and palette uses coordinated stable colors", () => {
+  const s = data();
+  s.courses[0].sections = [9, 10];
+  s.courses.push(
+    { ...s.courses[0], id: "third", sections: [11] },
+    { ...s.courses[0], id: "conflict", name: "另一门课", sections: [10] },
+  );
+  const bs = blocks(schedule(s, 1));
+  assert.equal(bs.length, 2);
+  assert.equal(bs[0].conflicts, 2);
+  const { courseTheme } = require("../miniprogram/core/engine.js");
+  assert.deepEqual(
+    courseTheme(" 工程伦理（二） "),
+    courseTheme("工程伦理(二)"),
+  );
+  assert.notEqual(
+    courseTheme("工程伦理（二）").text,
+    courseTheme("工程伦理（二）").background,
+  );
 });

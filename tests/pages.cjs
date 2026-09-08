@@ -110,7 +110,8 @@ test("horizontal swipes change weeks; vertical scrolling, taps, cancelled gestur
   p.setData({ week: 3 });
   p.refresh();
   assert.equal(p.data.month, "9月");
-  assert.equal(p.data.days[3].label, "10/1");
+  assert.equal(p.data.days[3].label, "1");
+  assert.equal(p.data.days[3].monthHint, "10月");
   const swipe = (x, y) => {
     p.touchStart({ touches: [{ clientX: 200, clientY: 200 }] });
     p.touchEnd({ changedTouches: [{ clientX: x, clientY: y }] });
@@ -137,4 +138,32 @@ test("horizontal swipes change weeks; vertical scrolling, taps, cancelled gestur
   p.setData({ week: 3, detail: {} });
   swipe(100, 200);
   assert.equal(p.data.week, 3);
+});
+
+test("merged card details cover the full lesson and adjustments target the selected original record", () => {
+  const { EXAMPLE } = require("../miniprogram/core/prompt.js");
+  const c = { ...EXAMPLE.courses[0], id: "a", weekday: 1, sections: [9, 10] };
+  let target = "";
+  global.wx = {
+    getStorageSync: () => ({
+      ...EXAMPLE,
+      courses: [c, { ...c, id: "b", sections: [11], weeks: [1] }],
+      adjustments: [],
+    }),
+    navigateTo: ({ url }) => {
+      target = url;
+    },
+  };
+  const p = instance("pages/home/home");
+  p.setData({ week: 1 });
+  p.refresh();
+  assert.equal(p.data.cards.length, 1);
+  p.open({ currentTarget: { dataset: { index: 0 } } });
+  assert.equal(p.data.detail.sectionText, "9–11");
+  assert.equal(p.data.detail.time, "19:40–22:30");
+  p.adjustDetail();
+  assert.equal(p.data.showParts, true);
+  assert.equal(target, "");
+  p.adjustPart({ currentTarget: { dataset: { index: 1 } } });
+  assert.ok(target.includes("id=b&date=2026-09-14"));
 });

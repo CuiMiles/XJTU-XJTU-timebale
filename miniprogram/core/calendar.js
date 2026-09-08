@@ -10,6 +10,8 @@ exports.dateOf = dateOf;
 exports.weekdayOf = weekdayOf;
 exports.validDate = validDate;
 exports.times = times;
+exports.sectionRanges = sectionRanges;
+exports.sectionLabel = sectionLabel;
 exports.timeLabel = timeLabel;
 exports.SEMESTER = { id: "2026-fall", start: "2026-09-14", weeks: 18 };
 exports.HOLIDAYS = [
@@ -79,7 +81,27 @@ function times(date) {
     const md = date.slice(5);
     return md >= "05-01" && md < "10-01" ? SUMMER : WINTER;
 }
+function sectionRanges(sections) {
+    const ranges = [];
+    [...new Set(sections)]
+        .sort((a, b) => a - b)
+        .forEach((n) => {
+        const last = ranges[ranges.length - 1];
+        if (last && last[1] + 1 === n)
+            last[1] = n;
+        else
+            ranges.push([n, n]);
+    });
+    return ranges;
+}
+function sectionLabel(sections) {
+    return sectionRanges(sections)
+        .map(([a, b]) => (a === b ? `${a}` : `${a}–${b}`))
+        .join("、");
+}
 function timeLabel(date, sections) {
     const t = times(date);
-    return sections.map((s) => `${s}节 ${t[s - 1]}`).join(" / ");
+    return sectionRanges(sections)
+        .map(([a, b]) => `${t[a - 1].split("-")[0]}–${t[b - 1].split("-")[1]}`)
+        .join(" / ");
 }

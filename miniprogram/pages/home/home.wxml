@@ -1,31 +1,29 @@
-<view class="heading">
-  <view class="week-summary">
+<view class="heading" style="padding-top:{{navTop}}px;">
+  <view
+    class="nav-row"
+    style="min-height:{{navHeight}}px;padding-right:{{navRight}}px;"
+  >
     <picker range="{{weeks}}" value="{{week - 1}}" bindchange="pick">
-      <view class="week">第{{week}}周 <text class="chevron">▾</text></view>
+      <view class="week">第{{week}}周 <text class="chevron">⌄</text></view>
     </picker>
-    <text class="today" bindtap="current">{{todayLabel}} · {{status}}</text>
   </view>
-  <view class="week-controls">
-    <button bindtap="prev" disabled="{{week === 1}}" aria-label="上一周">
-      ‹
-    </button>
-    <button bindtap="next" disabled="{{week === 18}}" aria-label="下一周">
-      ›
-    </button>
+  <view class="semester-row">
+    <text class="semester">2026-2027秋 · 第一学期</text>
+    <text class="today" bindtap="current">{{todayLabel}} · {{status}}</text>
   </view>
 </view>
 <view wx:if="{{loadError}}" class="page"
   ><view class="notice"
-    >本地数据读取失败。原数据未覆盖，可在管理页导出原始数据或恢复备份。</view
+    >本地数据读取失败，原数据未覆盖。请到管理页导出原始数据或恢复备份。</view
   ><button bindtap="manage">前往管理</button></view
 >
 <view wx:elif="{{empty}}" class="empty"
   ><view class="empty-art">▦</view><view class="title">还没有课程</view
   ><view class="muted"
-    >导入课表或手动添加课程。<br />数据只保存在这台设备，无需登录。</view
+    >导入课表或手动添加课程。<br />数据只保存在这台设备。</view
   ><button class="primary" bindtap="import">导入课表</button
   ><button bindtap="add">手动添加</button
-  ><view class="muted">学生个人工具 · 非西安交通大学官方产品</view></view
+  ><view class="muted">学生个人工具 · 非官方产品</view></view
 >
 <view
   wx:else
@@ -33,51 +31,59 @@
   bindtouchstart="touchStart"
   bindtouchend="touchEnd"
   bindtouchcancel="touchCancel"
-  ><view class="dayhead"
-    ><view class="axis">节次</view
-    ><view
-      wx:for="{{days}}"
-      wx:key="date"
-      class="day {{item.today ? 'active' : ''}}"
-      ><view>{{item.name}}</view><view class="date">{{item.label}}</view
-      ><text wx:if="{{item.holiday}}" class="holiday">停课</text></view
-    ></view
-  ><view wx:if="{{noClasses}}" class="week-empty">本周暂无课程</view
-  ><scroll-view scroll-y class="grid-scroll"
-    ><view class="grid"
-      ><view wx:for="{{rows}}" wx:key="n" class="grid-row"
+>
+  <view class="dayhead">
+    <view class="axis month">{{month}}</view>
+    <view wx:for="{{days}}" wx:key="date" class="day">
+      <view class="weekday">{{item.name}}</view>
+      <view class="date {{item.today ? 'active' : ''}}"
+        >{{item.label}}<view wx:if="{{item.today}}" class="today-dot"
+      /></view>
+      <text wx:if="{{item.holiday}}" class="day-hint">停课</text
+      ><text wx:elif="{{item.monthHint}}" class="day-hint"
+        >{{item.monthHint}}</text
+      >
+    </view>
+  </view>
+  <view wx:if="{{noClasses}}" class="week-empty">本周暂无课程</view>
+  <scroll-view scroll-y class="grid-scroll">
+    <view class="grid">
+      <view wx:for="{{rows}}" wx:key="n" class="grid-row"
         ><view class="axis"
-          ><view class="section">{{item.n}}</view><view>{{item.start}}</view
-          ><view>{{item.end}}</view></view
-        ><view wx:for="{{days}}" wx:key="date" class="cell" /></view
-      ><view class="courses"
-        ><view
+          ><view class="section">{{item.n}}</view
+          ><view class="section-time">{{item.start}}</view
+          ><view class="section-time">{{item.end}}</view></view
+        ><view wx:for="{{days}}" wx:key="date" class="cell"
+      /></view>
+      <view class="courses">
+        <view
           wx:for="{{cards}}"
           wx:key="key"
-          class="card {{item.joinBefore ? 'join-before' : ''}} {{item.joinAfter ? 'join-after' : ''}}"
+          class="card"
           style="top:{{item.top}}rpx;height:{{item.height}}rpx;left:{{item.day * 100 / 7}}%;width:14.285714%;"
           data-index="{{index}}"
           bindtap="open"
-          ><view
+        >
+          <view
             class="card-inner {{item.height === 110 ? 'tight' : ''}}"
-            style="background:{{item.color}}"
-            ><view class="course-name">{{item.name}}</view
-            ><view class="room">{{item.room || '教室待定'}}</view
-            ><view class="badge" wx:if="{{item.conflicts > 1}}"
-              >重叠 · 点开全部</view
-            ><view class="badge" wx:elif="{{item.o.adjusted}}"
-              >已调整</view
-            ></view
-          ></view
-        ></view
-      ></view
-    ><view class="footnote"
-      >{{week === 3 ? '10月1日起使用冬季作息，课程详情显示当天准确时间。' :
-      '点击课程查看详情 · 重叠课程点击后可逐一查看'}}<br />个人课表 ·
-      非官方产品</view
-    ></scroll-view
-  ></view
->
+            style="background:{{item.theme.background}};color:{{item.theme.text}};"
+          >
+            <view class="course-name">{{item.name}}</view
+            ><view class="room" style="color:{{item.theme.secondary}};"
+              >{{item.room || '教室待定'}}</view
+            >
+            <view class="badge" wx:if="{{item.conflicts > 1}}"
+              >{{item.conflicts}}门重叠</view
+            ><view class="badge" wx:elif="{{item.o.adjusted}}">已调整</view>
+          </view>
+        </view>
+      </view>
+    </view>
+    <view wx:if="{{week === 3}}" class="footnote"
+      >10月1日起使用冬季作息，详情按当天时间显示</view
+    >
+  </scroll-view>
+</view>
 <view wx:if="{{selection.length}}" class="mask" bindtap="close"
   ><view class="sheet" catchtap="noop"
     ><view class="title">这个时段的课程</view
@@ -89,7 +95,7 @@
       data-index="{{index}}"
       bindtap="choose"
       >{{item.name}} · {{item.room}}<view class="muted"
-        >第 {{item.o.sections}} 节</view
+        >第 {{item.sectionText}} 节</view
       ></view
     ><button bindtap="close">关闭</button></view
   ></view
@@ -100,18 +106,31 @@
     ><view class="muted">课程详情 {{detail.adjusted ? '· 已调整' : ''}}</view
     ><view class="title">{{detail.course.name}}</view
     ><view class="line"
-      >{{detail.date}} · 星期{{detail.day}} · 第 {{detail.sections}} 节</view
+      >{{detail.date}} · 星期{{detail.day}} · 第 {{detail.sectionText}} 节</view
     ><view class="line">时间　{{detail.time}}</view
     ><view class="line">教室　{{detail.room || '待定'}}</view
     ><view class="line">班级　{{detail.course.className || '未填写'}}</view
-    ><view class="line"
-      >教师　{{detail.course.teachers.length ? detail.course.teachers :
-      '未填写'}}</view
-    ><view class="line">周次　第 {{detail.weeks}} 周</view
+    ><view class="line">教师　{{detail.teachers || '未填写'}}</view
+    ><view wx:if="{{detail.parts.length === 1}}" class="line"
+      >周次　第 {{detail.weeks}} 周</view
+    ><view wx:else class="line"
+      ><view wx:for="{{detail.parts}}" wx:key="id"
+        >{{item.sections}}节 · 第{{item.weeks}}周</view
+      ></view
     ><view wx:if="{{detail.course.note}}" class="line"
       >备注　{{detail.course.note}}</view
     ><button class="primary" bindtap="adjustDetail">
       调整本次 / 恢复原安排</button
+    ><view wx:if="{{showParts}}" class="adjust-parts"
+      ><view class="muted">选择要调整的课段</view
+      ><button
+        wx:for="{{detail.parts}}"
+        wx:key="id"
+        data-index="{{index}}"
+        bindtap="adjustPart"
+      >
+        第{{item.sections}}节
+      </button></view
     ><button bindtap="closeDetail">关闭</button></view
   ></view
 >

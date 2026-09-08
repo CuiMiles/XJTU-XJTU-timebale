@@ -7,7 +7,7 @@
     >原日期为校历停课日，普通课程不显示。可以通过“调整本次”显式安排补课。</view
   ><view class="panel"
     ><view class="line">日期　{{o.date}} · 星期{{day}}</view
-    ><view class="line">节次　第 {{o.sections}} 节</view
+    ><view class="line">节次　第 {{sectionText}} 节</view
     ><view class="line">时间　{{time}}</view
     ><view class="line">教室　{{o.room || '待定'}}</view
     ><view class="line">班级　{{o.course.className || '未填写'}}</view

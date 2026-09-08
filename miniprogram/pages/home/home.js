@@ -6,6 +6,10 @@ const storage_1 = require("../../core/storage");
 Page({
     data: {
         week: 1,
+        navTop: 24,
+        navHeight: 40,
+        navRight: 100,
+        showParts: false,
         weeks: Array.from({ length: 18 }, (_, i) => `第${i + 1}周${i >= 16 ? " · 考试" : ""}`),
         days: [],
         rows: [],
@@ -22,6 +26,18 @@ Page({
     touchOrigin: null,
     suppressTapUntil: 0,
     onLoad() {
+        try {
+            const capsule = wx.getMenuButtonBoundingClientRect();
+            const window = wx.getWindowInfo();
+            this.setData({
+                navTop: capsule.top,
+                navHeight: capsule.height,
+                navRight: window.windowWidth - capsule.left + 12,
+            });
+        }
+        catch (_a) {
+            /* 模拟器不支持胶囊信息时使用保守留白 */
+        }
         this.setData({ week: Math.max(1, Math.min(18, (0, calendar_1.weekOf)((0, calendar_1.today)()))) });
     },
     onShow() {
@@ -35,13 +51,15 @@ Page({
                 return {
                     name: d,
                     date,
-                    label: (0, calendar_1.shortDate)(date),
+                    label: String(Number(date.slice(8))),
+                    monthHint: date.slice(8) === "01" ? `${Number(date.slice(5, 7))}月` : "",
                     today: date === currentDate,
                     holiday: calendar_1.HOLIDAYS.includes(date),
                 };
             });
             const items = (0, engine_1.schedule)(s, w);
             this.setData({
+                showParts: false,
                 detail: null,
                 selection: [],
                 loadError: false,
@@ -53,7 +71,7 @@ Page({
                     start: t.split("-")[0],
                     end: t.split("-")[1],
                 })),
-                cards: (0, engine_1.blocks)(items).map((b) => (Object.assign(Object.assign({}, b), { day: days.findIndex((d) => d.date === b.o.date), id: b.o.course.id, original: b.o.originalDate, name: b.o.course.name, room: b.o.room }))),
+                cards: (0, engine_1.blocks)(items).map((b) => (Object.assign(Object.assign({}, b), { day: days.findIndex((d) => d.date === b.o.date), id: b.o.course.id, original: b.o.originalDate, name: b.o.course.name, sectionText: (0, calendar_1.sectionLabel)(b.o.sections), room: b.o.room }))),
                 status: w === actual ? "本周" : "非本周",
                 todayLabel: `今天周${calendar_1.DAYS[(0, calendar_1.weekdayOf)(currentDate) - 1]}`,
                 month: `${Number((0, calendar_1.dateOf)(w, 1).slice(5, 7))}月`,
@@ -117,7 +135,7 @@ Page({
             return;
         const b = this.data.cards[Number(e.currentTarget.dataset.index)];
         const options = this.data.cards.filter((x) => x.day === b.day && x.start <= b.end && x.end >= b.start);
-        const unique = options.filter((x, i) => options.findIndex((y) => y.id === x.id && y.original === x.original) === i);
+        const unique = options.filter((x, i) => options.findIndex((y) => y.key === x.key) === i);
         if (unique.length > 1)
             this.setData({ selection: unique });
         else
@@ -125,7 +143,13 @@ Page({
     },
     go(b) {
         this.setData({
-            detail: Object.assign(Object.assign({}, b.o), { day: calendar_1.DAYS[(0, calendar_1.weekdayOf)(b.o.date) - 1], time: (0, calendar_1.timeLabel)(b.o.date, b.o.sections), weeks: b.o.course.weeks.join("、") }),
+            showParts: false,
+            detail: Object.assign(Object.assign({}, b.o), { members: b.members, sectionText: (0, calendar_1.sectionLabel)(b.o.sections), teachers: b.o.course.teachers.join("、"), parts: b.members.map((m) => ({
+                    id: m.course.id,
+                    original: m.originalDate,
+                    sections: (0, calendar_1.sectionLabel)(m.sections),
+                    weeks: m.course.weeks.join("、"),
+                })), day: calendar_1.DAYS[(0, calendar_1.weekdayOf)(b.o.date) - 1], time: (0, calendar_1.timeLabel)(b.o.date, b.o.sections), weeks: b.o.course.weeks.join("、") }),
         });
     },
     choose(e) {
@@ -140,8 +164,19 @@ Page({
     },
     adjustDetail() {
         const d = this.data.detail;
+        if (d.members.length > 1) {
+            this.setData({ showParts: !this.data.showParts });
+            return;
+        }
+        this.navigateAdjustment(d.members[0].course.id, d.members[0].originalDate);
+    },
+    adjustPart(e) {
+        const p = this.data.detail.parts[Number(e.currentTarget.dataset.index)];
+        this.navigateAdjustment(p.id, p.original);
+    },
+    navigateAdjustment(id, original) {
         wx.navigateTo({
-            url: `/pages/detail/detail?id=${encodeURIComponent(d.course.id)}&date=${d.originalDate}&adjust=1`,
+            url: `/pages/detail/detail?id=${encodeURIComponent(id)}&date=${original}&adjust=1`,
         });
     },
     noop() { },
