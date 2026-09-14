@@ -1,0 +1,2 @@
+@import "../word/word.wxss";
+.recall{text-align:center;padding:60rpx 28rpx}.headword{font-size:64rpx;margin:30rpx 0;word-break:break-word}.ratings{display:flex;gap:15rpx}.ratings button{flex:1}.primary{background:#35765f!important}.row button{font-size:24rpx}

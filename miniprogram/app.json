@@ -4,7 +4,8 @@
     "pages/manage/manage",
     "pages/editor/editor",
     "pages/transfer/transfer",
-    "pages/detail/detail"
+    "pages/detail/detail",
+    "pages/vocabulary/vocabulary"
   ],
   "window": {
     "navigationBarTitleText": "小交课表",
@@ -18,10 +19,75 @@
     "backgroundColor": "#ffffff",
     "borderStyle": "white",
     "list": [
-      { "pagePath": "pages/home/home", "text": "课表" },
-      { "pagePath": "pages/manage/manage", "text": "管理" }
+      {
+        "pagePath": "pages/home/home",
+        "text": "课表"
+      },
+      {
+        "pagePath": "pages/vocabulary/vocabulary",
+        "text": "背词"
+      },
+      {
+        "pagePath": "pages/manage/manage",
+        "text": "管理"
+      }
     ]
   },
   "style": "v2",
-  "sitemapLocation": "sitemap.json"
+  "sitemapLocation": "sitemap.json",
+  "subPackages": [
+    {
+      "name": "vocabulary",
+      "root": "vocabulary",
+      "pages": [
+        "pages/library/library",
+        "pages/study/study",
+        "pages/word/word",
+        "pages/settings/settings",
+        "pages/ask/ask"
+      ]
+    },
+    {
+      "name": "worddata0",
+      "root": "worddata0",
+      "pages": [
+        "loader"
+      ]
+    },
+    {
+      "name": "worddata1",
+      "root": "worddata1",
+      "pages": [
+        "loader"
+      ]
+    },
+    {
+      "name": "worddata2",
+      "root": "worddata2",
+      "pages": [
+        "loader"
+      ]
+    },
+    {
+      "name": "worddata3",
+      "root": "worddata3",
+      "pages": [
+        "loader"
+      ]
+    },
+    {
+      "name": "worddata4",
+      "root": "worddata4",
+      "pages": [
+        "loader"
+      ]
+    },
+    {
+      "name": "worddata5",
+      "root": "worddata5",
+      "pages": [
+        "loader"
+      ]
+    }
+  ]
 }

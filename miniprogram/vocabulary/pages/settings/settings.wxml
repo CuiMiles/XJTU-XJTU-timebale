@@ -1,0 +1,14 @@
+<view class="page"><view class="title">学习设置</view><view wx:if="{{loadError}}" class="notice">{{loadError}}。原数据未覆盖，可导出原始数据留存，再恢复有效备份。<button bindtap="exportRaw">导出原始数据</button></view>
+<view wx:else class="panel"><view class="label">每日新词（0 为暂停，最多 100）</view><input type="number" value="{{limit}}" bindinput="limitInput" maxlength="3"/><view class="label">新词等级</view><view class="chips"><view wx:for="{{levels}}" wx:key="id" class="chip {{item.selected ? 'selected' : ''}}" data-id="{{item.id}}" bindtap="toggleLevel">{{item.name}}</view></view><button class="primary" bindtap="save">保存设置</button></view>
+<view wx:if="{{message}}" class="notice">{{message}}</view>
+<view class="panel"><view class="label">学习统计</view><view class="line">学习中 {{stats.learned || 0}} · 熟词 {{stats.familiar || 0}} · 暂不可用 {{stats.unavailable || 0}}</view><view class="muted">熟词是自行跳过，不代表测试掌握。最近 14 个学习日：</view><view wx:for="{{recent}}" wx:key="day" class="line small">{{item.day}} · 新学 {{item.newIds.length}} · 复习 {{item.reviewIds.length}} · 反馈 {{item.attempts}} 次 · 拼写 {{item.spellingCorrect}}/{{item.spellingAttempts}}</view></view>
+<view class="panel"><view class="label">离线内容</view><view class="muted">首次准备词包需要联网。已加载的词包可离线读取；清缓存后需重新准备。</view><button disabled="{{downloading}}" bindtap="download">准备全部词包</button><view class="muted">{{downloadStatus}}</view></view>
+<view class="panel"><view class="label">备份与恢复</view><view class="muted">进度仅存本机，卸载、清缓存或换机不会自动迁移。备份不包含词典正文。</view><button bindtap="export">复制背词备份 JSON</button><button bindtap="file">分享备份文件</button><text wx:if="{{output}}" selectable class="backup-output">{{output}}</text><textarea value="{{text}}" bindinput="input" maxlength="5242880" placeholder="粘贴背词备份 JSON"/><button bindtap="validate">校验并预览</button><view wx:if="{{preview}}" class="notice">{{preview}}<button bindtap="confirm">确认恢复</button></view></view>
+<view class="panel"><view class="label">内容与来源</view><view class="line small" selectable>Open English Wordnet 2025 · CC BY 4.0
+https://en-word.net/downloads
+{{manifest.total}} 个精选词头；{{manifest.deepCount}} 个词有原创五步解析。
+分层为 wordfreq 词频加编辑初筛，非课标/CEFR 认证；中文提示与深学覆盖尚未完成整库审核。
+词频：Robyn Speer, wordfreq 3.1.1；分层索引 CC BY-SA 4.0。致谢 SUBTLEX（Marc Brysbaert 等）、OpenSubtitles、Google Books Ngrams、Wikipedia、Leeds、ParaCrawl 等。SUBTLEX 为免费开放数据。
+https://github.com/rspeer/wordfreq
+https://creativecommons.org/licenses/by-sa/4.0/
+词典筛选及格式已转换，原创教学内容与原文分开显示。模型问答默认未接入，无学习或课表数据上传。</view></view><button class="danger" bindtap="clear">清空背词数据</button></view>

@@ -1,0 +1,20 @@
+<view wx:if="{{entry && sense}}" class="card">
+  <view class="headword" selectable>{{entry.word}}</view>
+  <view class="meta">{{entry.ipa}} · {{sense.pos}}</view>
+  <picker wx:if="{{entry.senses.length > 1}}" range="{{entry.senses}}" range-key="definition" value="{{selected}}" bindchange="pick"><view class="sense-picker">词义 {{selected + 1}} / {{entry.senses.length}} · 点击切换</view></picker>
+  <view class="definition"><text wx:for="{{tokens}}" wx:key="index" class="{{item.word ? 'lookup' : ''}}" data-word="{{item.word ? item.text : ''}}" bindtap="lookup">{{item.text}}</text></view>
+  <view class="hint">点击释义里的英文词可查词</view>
+  <view wx:for="{{sense.examples}}" wx:key="index" class="example" selectable>{{item}}</view>
+  <view wx:if="{{sense.synonyms.length}}" class="synonyms"><text class="meta">同义词集 · 需结合当前词义理解</text><view><text wx:for="{{sense.synonyms}}" wx:key="*this" class="synonym" data-word="{{item}}" bindtap="lookup">{{item}}</text></view></view>
+  <button wx:if="{{entry.zh}}" size="mini" bindtap="chinese">{{showZh ? '隐藏中文' : '显示中文提示'}}</button>
+  <view wx:if="{{showZh}}" class="translation">{{entry.zh}}（词头提示，不覆盖全部词义）</view>
+  <view wx:if="{{deepVisible}}" class="deep"><view class="section-title">五步深学</view><view class="hint">原创教学内容 · 非词典原文 · 未作语料频次排名</view>
+    <view wx:for="{{entry.deep.blocks}}" wx:key="title" class="block"><view class="block-title">{{item.title}}</view><view class="body" selectable>{{item.en}}</view><button wx:if="{{item.zh}}" size="mini" data-index="{{index}}" bindtap="toggle">{{opened[index] ? '隐藏中文' : '显示中文'}}</button><view wx:if="{{opened[index]}}" class="translation">{{item.zh}}</view></view>
+  </view>
+  <view wx:else class="hint">当前词义的五步解析尚未收录。</view>
+  <button size="mini" bindtap="sourceToggle">{{sourceOpen ? '收起来源' : '释义来源与许可'}}</button>
+  <view wx:if="{{sourceOpen}}" class="source" selectable>{{source}}
+https://en-word.net/downloads
+https://creativecommons.org/licenses/by/4.0/
+词义 ID：{{sense.id}}</view>
+</view>

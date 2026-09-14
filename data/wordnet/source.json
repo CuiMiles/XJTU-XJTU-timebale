@@ -1,0 +1,20 @@
+{
+  "resource": "Open English Wordnet",
+  "edition": "2025 standard",
+  "sourcePage": "https://en-word.net/downloads",
+  "downloadUrl": "https://en-word.net/downloads/english-wordnet-2025-json.zip",
+  "downloadedAt": "2026-09-14T03:20:06.410826+00:00",
+  "transport": "direct; curl --noproxy *; no temporary proxy started",
+  "bytes": 9986555,
+  "sha256": "7d749f6e2c39e6970e4997839dcf6e42fd281f3c2fae0171d2192bae8cfa4b51",
+  "verification": "ZIP CRC and all JSON parsing passed; hash computed locally, not publisher-authenticated",
+  "license": "CC BY 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "attribution": "Open English Wordnet Community; derived from Princeton WordNet",
+  "modifications": "None; original archive and byte-for-byte JSON extraction",
+  "counts": {
+    "jsonFiles": 73,
+    "entryHeadwords": 128009,
+    "synsets": 107558
+  }
+}

@@ -4,18 +4,27 @@ const path = require("node:path");
 const { test } = require("node:test");
 const root = path.join(__dirname, "../miniprogram");
 const app = JSON.parse(fs.readFileSync(path.join(root, "app.json"), "utf8"));
+const routes = app.pages.concat(
+  (app.subPackages || []).flatMap((p) => p.pages.map((r) => p.root + "/" + r)),
+);
 const definitions = {};
 global.Page = (p) => {
   definitions.current = p;
 };
-for (const route of app.pages) {
+for (const route of routes) {
   test("route and event bindings: " + route, () => {
     for (const ext of [".js", ".ts", ".wxml", ".json"])
       assert.ok(fs.existsSync(path.join(root, route + ext)), route + ext);
     const config = JSON.parse(
       fs.readFileSync(path.join(root, route + ".json"), "utf8"),
     );
-    assert.deepEqual(config.usingComponents, {});
+    assert.equal(typeof config.usingComponents, "object");
+    for (const component of Object.values(config.usingComponents))
+      for (const ext of [".js", ".json", ".wxml", ".wxss"])
+        assert.ok(
+          fs.existsSync(path.join(root, component + ext)),
+          component + ext,
+        );
     require(path.join(root, route + ".js"));
     definitions[route] = definitions.current;
     const wxml = fs.readFileSync(path.join(root, route + ".wxml"), "utf8");
@@ -32,10 +41,10 @@ for (const route of app.pages) {
 test("tab destinations and literal navigation paths exist", () => {
   for (const tab of app.tabBar.list)
     assert.ok(app.pages.includes(tab.pagePath));
-  for (const route of app.pages) {
+  for (const route of routes) {
     const code = fs.readFileSync(path.join(root, route + ".js"), "utf8");
-    for (const m of code.matchAll(/\/pages\/[a-z]+\/[a-z]+/g))
-      assert.ok(app.pages.includes(m[0].slice(1)), m[0]);
+    for (const m of code.matchAll(/\/(?:vocabulary\/)?pages\/[a-z]+\/[a-z]+/g))
+      assert.ok(routes.includes(m[0].slice(1)), m[0]);
   }
 });
 function instance(route) {

@@ -1,0 +1,314 @@
+{
+  "mitigate": {
+    "senseId": "00907990-v",
+    "gloss": "减轻；缓和",
+    "blocks": [
+      {
+        "title": "第一步 · 画面锚定",
+        "en": "A red flood races towards a library. A librarian in yellow boots stacks rough sandbags across the door. Water still seeps through, but the roaring wave becomes a shallow trickle. The bags limit the damage without stopping the storm.",
+        "zh": "洪水与沙袋形成减轻冲击的画面，不是让风暴消失。"
+      },
+      {
+        "title": "第二步 · 语义场对比",
+        "en": "mitigate: sandbags soften an impact; usually formal and focused on harm.\nalleviate: lift part of a heavy bag; focus on suffering or burden.\nreduce: turn a dial down; a broad decrease in amount or degree.\nease: loosen a tight knot; make discomfort or difficulty less intense.\nNone of these words specifies permanence. This is a comparison of focus, not a fixed scale of strength.",
+        "zh": "mitigate 重在减害；alleviate 缓解负担；reduce 泛指减少；ease 舒缓。都不保证永久。"
+      },
+      {
+        "title": "第三步 · 语域感知",
+        "en": "Formal reports and policy discussions often use this word. Original report: \"The barriers helped mitigate flood damage.\" It fits an assessment of consequences. In a casual request to fetch towels, \"make the flooding less bad\" would sound more natural, though mitigate is understandable.",
+        "zh": "适合报告与政策语境，朋友聊天中简单表达更自然。"
+      },
+      {
+        "title": "第四步 · 语义韵感知",
+        "en": "The object is usually undesirable; the action is generally helpful. \"Mitigate risk\" limits possible harm. \"Mitigate damage\" limits consequences. \"Mitigate the effects\" needs context identifying harmful effects. These are teaching examples, not a corpus frequency ranking.",
+        "zh": "宾语通常是不良事物，行动通常有帮助。未进行语料频次排名。"
+      },
+      {
+        "title": "第五步 · 联想网络",
+        "en": "forecast → prepare → barrier → damage. A forecast warns the librarian. She prepares sandbags and builds a barrier. The storm still comes, but fewer books get wet. Preparation helps mitigate damage. These are related concepts, not claims about your study history.",
+        "zh": "预报、准备、屏障、损害形成完整因果链。"
+      },
+      {
+        "title": "综合示例",
+        "en": "When the forecast warned of heavy rain, Maya helped prepare the village library. She carried rough sandbags to the door and built a low barrier. The storm still flooded the street, but the bags helped mitigate the damage inside. In her report, Maya explained that the barrier reduced the flow of water; it did not eliminate the danger. Next time, the village would need better drainage as well as emergency supplies.\n\nStep 1: rough sandbags and moving water recreate the flood picture. Step 2: reducing water flow is distinguished from eliminating danger. Step 3: Maya writes a report. Step 4: mitigate takes damage as its negative object. Step 5: forecast, prepare, barrier and damage form the causal chain.",
+        "zh": "预报提示大雨，玛雅帮图书馆搬来粗糙沙袋筑起矮屏障。街道仍被淹没，但室内损害减轻了。她在报告里指出屏障减少进水，却没有消除危险。下次还需要更好的排水设施与应急物资。画面是沙袋与洪水，对比是减轻与消除，报告体现语域，damage 体现语义韵，预报到防护再到损害形成联想链。"
+      }
+    ],
+    "status": "editorial",
+    "version": "2026-09-14",
+    "example": "When the forecast warned of heavy rain, Maya helped prepare the village library. She carried rough sandbags to the door and built a low barrier. The storm still flooded the street, but the bags helped mitigate the damage inside. In her report, Maya explained that the barrier reduced the flow of water; it did not eliminate the danger. Next time, the village would need better drainage as well as emergency supplies."
+  },
+  "alleviate": {
+    "senseId": "00519475-v",
+    "gloss": "缓解；减轻负担",
+    "blocks": [
+      {
+        "title": "第一步 · 画面锚定",
+        "en": "Picture a student under an enormous grey backpack. A friend removes three heavy bricks. The straps stop biting into the student's shoulders, although the bag is not empty. The burden becomes easier to bear.",
+        "zh": "朋友从沉重背包里拿走砖块，负担减轻但并未消失。"
+      },
+      {
+        "title": "第二步 · 语义场对比",
+        "en": "alleviate: remove some bricks, especially from a burden or distress.\nrelieve: take pressure off; can suggest a more immediate release.\nmitigate: soften harmful consequences, often in formal analysis.\nease: loosen tension or difficulty, common in everyday description.\nNone guarantees a complete cure or lasting result; context determines the degree of relief.",
+        "zh": "侧重点分别是缓解负担、解除压力、减轻后果和舒缓困难。"
+      },
+      {
+        "title": "第三步 · 语域感知",
+        "en": "Often used in formal discussion of social problems or discomfort. Original policy sentence: \"The grant may alleviate financial pressure.\" It describes partial help. In a friendly chat, \"This should ease the pressure\" often sounds lighter and less institutional.",
+        "zh": "政策及正式讨论常见，日常聊天可用 ease。"
+      },
+      {
+        "title": "第四步 · 语义韵感知",
+        "en": "Often combines with a negative condition and describes a helpful response. \"Alleviate suffering\" foregrounds distress. \"Alleviate poverty\" describes reducing hardship, not necessarily ending it. \"Alleviate pressure\" suggests making demands easier to bear. These are editorial examples, not measured top collocations.",
+        "zh": "痛苦、贫困、压力为负面处境，缓解行为有帮助；不是最高频统计。"
+      },
+      {
+        "title": "第五步 · 联想网络",
+        "en": "burden → support → relief → recover. A student carries a burden of fees. A support grant provides relief. With less pressure, the student can recover enough time to study. The grant alleviates a difficulty rather than magically solving every problem.",
+        "zh": "负担、支持、缓解、恢复串联，帮助不等于彻底解决。"
+      },
+      {
+        "title": "综合示例",
+        "en": "For months, Lena worked late shifts to pay her fees. A small grant did not cover everything, but it helped alleviate the financial pressure. She dropped one evening shift and used the time to sleep and study. In her application report, she described the grant as practical support rather than a complete solution. Her remaining debts still mattered, but the burden no longer felt impossible to carry.\n\nStep 1: the burden that feels easier to carry echoes the backpack. Step 2: partial financial relief is contrasted with a complete solution. Step 3: Lena describes support in an application report. Step 4: alleviate financial pressure pairs helpful action with an unwelcome condition. Step 5: fees, support, relief and renewed study time form the network.",
+        "zh": "莉娜连续几个月上晚班支付学费。一笔小补助没有解决所有问题，但缓解了经济压力，让她少上一晚班，腾出睡眠和学习时间。她在申请报告里把补助称为实际支持而非完整解决方案。债务仍在，负担却不再难以承受。背包画面、部分缓解与解决的对比、报告语域、压力搭配、负担到支持的链条共同体现五步。"
+      }
+    ],
+    "status": "editorial",
+    "version": "2026-09-14",
+    "example": "For months, Lena worked late shifts to pay her fees. A small grant did not cover everything, but it helped alleviate the financial pressure. She dropped one evening shift and used the time to sleep and study. In her application report, she described the grant as practical support rather than a complete solution. Her remaining debts still mattered, but the burden no longer felt impossible to carry."
+  },
+  "resilient": {
+    "senseId": "02288300-s",
+    "gloss": "有韧性的；能恢复的",
+    "blocks": [
+      {
+        "title": "第一步 · 画面锚定",
+        "en": "A small green plant is flattened by a muddy boot. After the rain, its flexible stem slowly rises towards a patch of sunlight. One leaf is torn, yet the plant keeps growing. Recovery, not invulnerability, is the centre of the picture.",
+        "zh": "植物被踩弯后重新生长，核心是恢复，不是不受伤。"
+      },
+      {
+        "title": "第二步 · 语义场对比",
+        "en": "resilient: bend and recover after adversity.\nrobust: a thick wooden beam withstands pressure; resistance is foregrounded.\ntough: a hard shell endures rough treatment; broad and often informal.\nadaptable: a vine changes direction around a wall; adjustment is foregrounded.\nThese qualities overlap but are not a strength ranking. Recovery can be incomplete; permanence depends on circumstances.",
+        "zh": "resilient 强调恢复，robust 抵抗压力，tough 耐受，adaptable 适应变化。"
+      },
+      {
+        "title": "第三步 · 语域感知",
+        "en": "Fits everyday praise and formal discussion of people or communities. Original conversation: \"She is resilient; she found a way forward after the setback.\" Original report: \"The programme supports resilient communities.\" The report should explain evidence of recovery rather than use the word as an empty compliment.",
+        "zh": "口语赞许和正式报告都可用，但报告需要恢复能力的证据。"
+      },
+      {
+        "title": "第四步 · 语义韵感知",
+        "en": "Usually approving in this sense, but does not mean someone needs no help. \"Resilient communities\" suggests collective recovery. \"Resilient children\" highlights coping after difficulty. \"Resilient workers\" can praise recovery but should not excuse harmful conditions. These examples are not corpus rankings.",
+        "zh": "通常褒义，不代表无需帮助，也不能替恶劣条件开脱。"
+      },
+      {
+        "title": "第五步 · 联想网络",
+        "en": "setback → support → adapt → recover. A shop suffers a setback after a flood. Neighbours offer support. The owner adapts by selling from a temporary stall and gradually recovers. Resilience includes support and change; it is not simply refusing to feel pain.",
+        "zh": "挫折、支持、适应、恢复形成恢复过程。"
+      },
+      {
+        "title": "综合示例",
+        "en": "After the flood closed her shop, Nora felt exhausted and uncertain. Friends helped her clean the damaged shelves, and she began selling bread from a small stall. A local report called her resilient because she gradually rebuilt her business. The word did not mean that the loss was painless. Like a bent plant reaching for sunlight, she recovered through time, practical support, and a willingness to adapt.\n\nStep 1: the bent plant reaching for sunlight pictures recovery. Step 2: recovery is distinguished from freedom from pain. Step 3: a local report evaluates Nora's response. Step 4: resilient praises coping after loss without denying the need for help. Step 5: a setback leads to support, adaptation and recovery.",
+        "zh": "洪水关停店铺后，诺拉疲惫又迷茫。朋友帮她清理书架，她从小摊重新卖面包。当地报道说她有韧性，因为她逐步重建了生意，而非损失没有造成痛苦。她像朝阳光恢复生长的植物，靠时间、支持和适应恢复。植物对应画面，恢复与免伤对应对比，报道对应语域，褒义评述对应语义韵，挫折到恢复对应联想。"
+      }
+    ],
+    "status": "editorial",
+    "version": "2026-09-14",
+    "example": "After the flood closed her shop, Nora felt exhausted and uncertain. Friends helped her clean the damaged shelves, and she began selling bread from a small stall. A local report called her resilient because she gradually rebuilt her business. The word did not mean that the loss was painless. Like a bent plant reaching for sunlight, she recovered through time, practical support, and a willingness to adapt."
+  },
+  "ambiguous": {
+    "senseId": "00103000-a",
+    "gloss": "有歧义的；不止一种含义的",
+    "blocks": [
+      {
+        "title": "第一步 · 画面锚定",
+        "en": "Imagine a shiny road sign with one arrow splitting into two equally bright paths. Two travellers read the same sign and confidently walk in opposite directions. The message supports more than one reading, rather than merely being hard to see.",
+        "zh": "同一个路标分出两条路径，读者各自得到不同但可能的理解。"
+      },
+      {
+        "title": "第二步 · 语义场对比",
+        "en": "ambiguous: one sign permits distinct readings.\nvague: a foggy sign lacks precise detail.\nunclear: dirty glass prevents understanding; a broad description.\nequivocal: a speaker gives a carefully balanced answer that avoids a clear commitment.\nThere is no fixed intensity order. Clarification can resolve ambiguity; the adjective itself does not specify whether that will happen.",
+        "zh": "ambiguous 是多种读法；vague 缺细节；unclear 泛指不清楚；equivocal 常指不明确表态。"
+      },
+      {
+        "title": "第三步 · 语域感知",
+        "en": "Useful in everyday discussion and academic analysis. Original chat: \"Your message was ambiguous: did you mean Friday morning or evening?\" Original essay: \"The ambiguous ending permits two readings.\" In literary analysis, more than one reading may be deliberate and valuable.",
+        "zh": "聊天和学术分析都适用，文学中的多义可有价值。"
+      },
+      {
+        "title": "第四步 · 语义韵感知",
+        "en": "Often signals a communication problem, but can describe interesting artistic openness. \"Ambiguous wording\" raises interpretation concerns. \"Ambiguous instructions\" may lead to conflicting actions. \"Ambiguous ending\" can invite discussion rather than criticism. These are examples without frequency claims.",
+        "zh": "说明书歧义常造成问题，文学结尾的歧义未必负面。"
+      },
+      {
+        "title": "第五步 · 联想网络",
+        "en": "message → interpretation → confusion → clarify. A message says to meet by the bank. One friend imagines a financial building, another a river. Their interpretations create confusion. A location pin clarifies the ambiguous message.",
+        "zh": "信息、解释、混乱、澄清形成链条。"
+      },
+      {
+        "title": "综合示例",
+        "en": "The invitation asked everyone to meet by the bank at six. Joel waited outside the financial building, while Mei walked to the river. Neither had ignored the message; its wording was ambiguous. When their calls finally connected, they compared their interpretations and laughed. A location pin settled the confusion. The organiser rewrote the next invitation with a street address, replacing a sign pointing two ways with a clear destination.\n\nStep 1: the sign pointing two ways pictures competing readings. Step 2: two meanings of bank create ambiguity, not simply missing detail. Step 3: an organiser explains and revises an invitation. Step 4: ambiguous wording causes a communication problem. Step 5: a message produces interpretations, confusion and clarification.",
+        "zh": "邀请要求六点在 bank 旁见面。乔尔等在银行外，梅去了河边。两人都没忽视信息，只是词义有歧义。通话后他们比较理解并笑了起来，定位解决了混乱。组织者下一次改写成具体街道地址。双向路标、两种明确读法、邀请说明、负面沟通影响和澄清链条对应五步。"
+      }
+    ],
+    "status": "editorial",
+    "version": "2026-09-14",
+    "example": "The invitation asked everyone to meet by the bank at six. Joel waited outside the financial building, while Mei walked to the river. Neither had ignored the message; its wording was ambiguous. When their calls finally connected, they compared their interpretations and laughed. A location pin settled the confusion. The organiser rewrote the next invitation with a street address, replacing a sign pointing two ways with a clear destination."
+  },
+  "coherent": {
+    "senseId": "00466504-a",
+    "gloss": "连贯的；各部分逻辑一致的",
+    "blocks": [
+      {
+        "title": "第一步 · 画面锚定",
+        "en": "On a blue desk, scattered puzzle pieces click into place. Roads on neighbouring pieces line up, and a river runs continuously across the finished picture. Each part contributes to a whole that makes sense.",
+        "zh": "蓝桌上的拼图连接成整体，河流和道路贯通。"
+      },
+      {
+        "title": "第二步 · 语义场对比",
+        "en": "coherent: puzzle pieces form an understandable whole.\nconsistent: matching pieces do not contradict one another, even before a full picture appears.\nlogical: each step follows through a chain of reasons.\ncogent: a tightly built argument is convincing and forceful.\nThese are different dimensions, not a fixed strength scale. A coherent story can still be false; later edits can improve or disrupt coherence.",
+        "zh": "coherent 重整体连贯，consistent 重不矛盾，logical 重推理，cogent 重说服力。"
+      },
+      {
+        "title": "第三步 · 语域感知",
+        "en": "Common in academic and professional writing about explanations or plans. Original feedback: \"Please turn these observations into a coherent argument.\" It asks for connections between parts, not just correct grammar. In a casual chat, \"Your story makes sense now\" is a simpler alternative.",
+        "zh": "适用于论文、报告和计划评价，不能只理解为语法正确。"
+      },
+      {
+        "title": "第四步 · 语义韵感知",
+        "en": "Usually approving when assessing organisation. \"Coherent argument\" suggests connected reasoning. \"Coherent account\" suggests an understandable narrative. \"Coherent strategy\" suggests mutually supporting actions. Coherence does not establish truth or fairness. No frequency ranking is claimed.",
+        "zh": "通常褒义，但连贯不等于真实或公平。"
+      },
+      {
+        "title": "第五步 · 联想网络",
+        "en": "evidence → sequence → connection → argument. A researcher gathers evidence, arranges it in a sequence, and explains the connections. The result is a coherent argument. Missing links are like puzzle pieces that do not join.",
+        "zh": "证据、顺序、连接、论证组成逻辑网络。"
+      },
+      {
+        "title": "综合示例",
+        "en": "Sam collected useful observations, but his first report jumped between unrelated points. He moved each paragraph onto a separate card and arranged the cards across his blue desk. Then he added sentences explaining the connections. The final report offered a coherent account of the experiment. Its evidence still needed checking, but readers could now follow the sequence and understand how each observation supported the argument.\n\nStep 1: paragraph cards on the blue desk act like puzzle pieces. Step 2: an understandable whole is distinguished from verified truth. Step 3: the experiment is presented in a report. Step 4: coherent account positively evaluates organisation. Step 5: observations are sequenced and connected to an argument.",
+        "zh": "萨姆收集了有用观察，但初稿在无关话题间跳跃。他把段落写在卡片上铺在蓝桌上，调整顺序并补上连接句。最终实验报告连贯了，尽管证据仍需核对，读者已能理解顺序与论据关系。卡片对应拼图，连贯不等于真实体现对比，报告体现语域，coherent account 体现积极评价，观察到论证体现网络。"
+      }
+    ],
+    "status": "editorial",
+    "version": "2026-09-14",
+    "example": "Sam collected useful observations, but his first report jumped between unrelated points. He moved each paragraph onto a separate card and arranged the cards across his blue desk. Then he added sentences explaining the connections. The final report offered a coherent account of the experiment. Its evidence still needed checking, but readers could now follow the sequence and understand how each observation supported the argument."
+  },
+  "inevitable": {
+    "senseId": "00343913-a",
+    "gloss": "不可避免的",
+    "blocks": [
+      {
+        "title": "第一步 · 画面锚定",
+        "en": "A row of black dominoes curves towards a silver bell. The first tile falls, and the last tile is already tipping into the bell. At that moment, with no intervention possible, the ring cannot be prevented.",
+        "zh": "最后一块多米诺已撞向铃铛，强调在给定条件下无法阻止。"
+      },
+      {
+        "title": "第二步 · 语义场对比",
+        "en": "inevitable: the bell cannot now be stopped.\nunavoidable: no available route avoids the outcome; very close in meaning.\ncertain: the speaker has no doubt it will happen, emphasising confidence.\ninescapable: every exit is blocked; often stresses being unable to get away.\nThe first two are not different probability levels. Whether an event can be reversed afterwards is a separate question from preventing it.",
+        "zh": "inevitable 与 unavoidable 很接近；certain 强调确信；inescapable 强调无处逃离。"
+      },
+      {
+        "title": "第三步 · 语域感知",
+        "en": "Fits ordinary speech and formal analysis, but makes a strong claim. Original discussion: \"Some delay was inevitable once the only bridge closed.\" It needs a reason showing why alternatives were unavailable. A scientific report should avoid calling an uncertain forecast inevitable.",
+        "zh": "语气很强，需要无法避免的依据，不应修饰不确定预测。"
+      },
+      {
+        "title": "第四步 · 语义韵感知",
+        "en": "Often accompanies unwelcome outcomes but is not inherently negative. \"Inevitable delay\" frames a problem as unavoidable. \"Inevitable consequence\" links an outcome to prior conditions. \"Inevitable change\" may be welcomed or feared. These are illustrative combinations, not a corpus ranking.",
+        "zh": "常描述不良结果但并非天生负面。"
+      },
+      {
+        "title": "第五步 · 联想网络",
+        "en": "condition → constraint → consequence → response. A storm closes the only bridge. The constraint removes every delivery route. Delay becomes an inevitable consequence, so the team changes its response by warning customers rather than promising the impossible.",
+        "zh": "条件、限制、后果、应对构成推理链。"
+      },
+      {
+        "title": "综合示例",
+        "en": "By dawn, floodwater covered the only bridge into the valley. The delivery team checked every alternative route, but none was open. A delay was inevitable under those conditions. Their report explained the constraint instead of treating the problem as mere bad luck. They could not prevent the late arrival, but they could phone customers and protect the goods. Accepting the consequence helped them choose a useful response.\n\nStep 1: the blocked delivery chain plays the role of the unstoppable domino sequence. Step 2: inability to prevent delay is distinguished from ability to respond. Step 3: a report justifies the conclusion. Step 4: inevitable delay frames an unwelcome consequence. Step 5: flood conditions create a constraint, a consequence and a response.",
+        "zh": "黎明时洪水淹没唯一桥梁，送货队检查后发现所有替代路线也关闭了。在这些条件下延迟无法避免。报告说明了限制，而非只归咎于运气。他们虽不能阻止迟到，却能通知客户并保护货物。受阻链条对应多米诺，无法预防与可作应对形成对比，报告提供语域，delay 是负面后果，条件到应对构成网络。"
+      }
+    ],
+    "status": "editorial",
+    "version": "2026-09-14",
+    "example": "By dawn, floodwater covered the only bridge into the valley. The delivery team checked every alternative route, but none was open. A delay was inevitable under those conditions. Their report explained the constraint instead of treating the problem as mere bad luck. They could not prevent the late arrival, but they could phone customers and protect the goods. Accepting the consequence helped them choose a useful response."
+  },
+  "sustainable": {
+    "senseId": "02817084-a",
+    "gloss": "可持续的；能维持的",
+    "blocks": [
+      {
+        "title": "第一步 · 画面锚定",
+        "en": "Picture a wooden water tank with a blue level line. A village takes out two buckets each day, while a spring adds two fresh buckets. The level stays steady through the weeks. Taking ten buckets daily would empty the tank.",
+        "zh": "水箱每天取出与补充平衡，体现长期维持所需的条件。"
+      },
+      {
+        "title": "第二步 · 语义场对比",
+        "en": "sustainable: inflow supports continued use.\nviable: a plan can work, but its long-term resource balance still needs checking.\ndurable: a strong object lasts; the focus is resistance to wear.\nmaintainable: people can keep a system in working order with available effort.\nThese dimensions overlap without forming a strength ranking. Sustainability depends on conditions and may be lost when demand changes.",
+        "zh": "sustainable 重持续条件，viable 重可行，durable 重耐久，maintainable 重可维护。"
+      },
+      {
+        "title": "第三步 · 语域感知",
+        "en": "Common in policy, environmental discussion and business planning. Original report: \"The team needs a sustainable workload.\" This concerns continued effort, not necessarily ecology. When describing an environmental product, explain the relevant resource or impact instead of using sustainable as an unsupported slogan.",
+        "zh": "用于环境或工作负荷等多种场景，需要解释具体依据。"
+      },
+      {
+        "title": "第四步 · 语义韵感知",
+        "en": "Usually positive in planning, but requires evidence. \"Sustainable growth\" raises questions about long-term limits. \"Sustainable practices\" suggests repeatable activity with manageable costs or impacts. \"Sustainable pace\" focuses on effort people can maintain. These are illustrative, not measured top collocations.",
+        "zh": "通常带积极评价，但可持续增长等搭配需要证据。"
+      },
+      {
+        "title": "第五步 · 联想网络",
+        "en": "resource → balance → demand → future. A village measures its water resource, balances use against renewal, and adjusts demand during drought. The plan is sustainable only while future needs can still be met under those conditions.",
+        "zh": "资源、平衡、需求、未来形成系统关系。"
+      },
+      {
+        "title": "综合示例",
+        "en": "The village once pumped water faster than the spring could replace it. Engineers marked a blue line inside the storage tank and measured the daily supply. Residents then agreed on a sustainable level of use. The plan balanced present demand with the water available over time. When a dry season arrived, they reduced consumption again. Keeping the system sustainable required observation and adjustment, not a promise made once and forgotten.\n\nStep 1: the tank and blue line provide a visible resource balance. Step 2: continued balanced use matters more than a plan working only once. Step 3: residents explain a measured water-use plan. Step 4: sustainable level of use is a positive assessment supported by conditions. Step 5: resource, demand, balance and future adjustment are connected.",
+        "zh": "村庄曾经抽水过快，超过泉水补充速度。工程师在水箱画蓝线，测量每日供应，居民据此约定能持续维持的用水量。旱季来临又减少消耗。可持续需要观察调整，不是一次承诺。水箱体现画面，长期平衡区别于一时可行，计划提供正式说明语境，有依据的积极评价体现语义韵，资源需求与未来相连。"
+      }
+    ],
+    "status": "editorial",
+    "version": "2026-09-14",
+    "example": "The village once pumped water faster than the spring could replace it. Engineers marked a blue line inside the storage tank and measured the daily supply. Residents then agreed on a sustainable level of use. The plan balanced present demand with the water available over time. When a dry season arrived, they reduced consumption again. Keeping the system sustainable required observation and adjustment, not a promise made once and forgotten."
+  },
+  "exacerbate": {
+    "senseId": "00208618-v",
+    "gloss": "使恶化；使加剧",
+    "blocks": [
+      {
+        "title": "第一步 · 画面锚定",
+        "en": "A cook notices a small orange flame licking the edge of a pan. Instead of covering it, he pours oil onto it. The flame leaps higher and black smoke fills the kitchen. An existing problem has become worse.",
+        "zh": "小火被加油后变大，强调已有问题进一步恶化。"
+      },
+      {
+        "title": "第二步 · 语义场对比",
+        "en": "exacerbate: add oil to an existing fire; often formal and focused on a problem.\nworsen: move from bad to worse; the broad everyday option.\naggravate: make a troublesome condition more severe; can also mean annoy in another sense.\nintensify: turn up the strength of anything, including a positive experience.\nThere is no universal severity ranking. None of these verbs says whether later repair is possible.",
+        "zh": "exacerbate 较正式；worsen 泛指变坏；aggravate 加剧问题；intensify 也可增强正面体验。"
+      },
+      {
+        "title": "第三步 · 语域感知",
+        "en": "Fits formal reporting and academic explanation. Original report: \"Poor drainage exacerbated the flooding.\" It identifies a factor that made a problem worse. In casual conversation, \"That made things worse\" is often more natural. Do not confuse the selected meaning with the separate sense of irritating someone.",
+        "zh": "正式报告适用，日常常说 make things worse。注意与激怒义项区分。"
+      },
+      {
+        "title": "第四步 · 语义韵感知",
+        "en": "Typically negative because the object is already a problem. \"Exacerbate tensions\" increases conflict. \"Exacerbate inequality\" deepens an imbalance. \"Exacerbate symptoms\" worsens an existing condition. These are editorial examples; no medical advice or corpus frequency ranking is implied.",
+        "zh": "宾语通常已有问题，如紧张、不平等或症状；不是语料频次结论。"
+      },
+      {
+        "title": "第五步 · 联想网络",
+        "en": "problem → reaction → escalation → prevention. A small fire is the problem. The wrong reaction adds fuel, causing escalation. Understanding how a response can exacerbate harm helps the cook choose prevention instead of repeating the mistake.",
+        "zh": "问题、反应、升级、预防构成因果链。"
+      },
+      {
+        "title": "综合示例",
+        "en": "The town already struggled with traffic near the station. Closing the side road without warning exacerbated the problem, pushing more cars into the same narrow street. In their report, planners compared the decision to adding fuel to a small fire. The closure had not created the original congestion, but it had made it worse. They reopened the route and introduced clearer signs to prevent another escalation.\n\nStep 1: fuel added to a fire anchors the worsening traffic picture. Step 2: making an existing problem worse differs from causing the original problem. Step 3: planners analyse the decision in a report. Step 4: exacerbate takes problem as a negative object. Step 5: a problem prompts a reaction, escalation and prevention.",
+        "zh": "车站周围本就堵车，未经预告关闭支路让更多车挤进窄街，问题进一步恶化。规划人员在报告中把这比作火上浇油：关闭道路没造成最初拥堵，却使它更糟。他们重新开放道路并增加标志避免再升级。火的画面、加剧与原始成因的区别、报告语域、负面 problem 搭配、反应到预防的链条体现五步。"
+      }
+    ],
+    "status": "editorial",
+    "version": "2026-09-14",
+    "example": "The town already struggled with traffic near the station. Closing the side road without warning exacerbated the problem, pushing more cars into the same narrow street. In their report, planners compared the decision to adding fuel to a small fire. The closure had not created the original congestion, but it had made it worse. They reopened the route and introduced clearer signs to prevent another escalation."
+  }
+}

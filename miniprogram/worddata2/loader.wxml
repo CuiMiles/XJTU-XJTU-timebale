@@ -1,0 +1,1 @@
+<view class="page">此词包用于离线学习。<button bindtap="back">返回</button></view>

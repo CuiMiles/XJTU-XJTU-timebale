@@ -1,0 +1,12 @@
+<view class="page vocab-page">
+  <view class="eyebrow">WORDS IN CONTEXT</view><view class="title">把英文，读进生活</view><view class="muted">英文释义先行 · 熟词一键跳过</view>
+  <view wx:if="{{loadError}}" class="notice">{{loadError}}。请到学习设置导出原始数据或恢复备份。<button bindtap="settings">学习设置</button></view>
+  <block wx:else>
+    <view class="hero"><view class="muted">今日学习</view><view class="metrics"><view><text class="number">{{stats.due}}</text><view>待复习</view></view><view><text class="number">{{stats.daily.newIds.length}}</text><view>已学新词</view></view><view><text class="number">{{stats.familiar}}</text><view>熟词</view></view></view><button class="primary" bindtap="start">开始 / 继续学习 →</button></view>
+    <view class="row"><view class="section-title">分级词库</view><text class="link" bindtap="library">全部 {{manifest.total}} 词 ›</text></view>
+    <view wx:for="{{levels}}" wx:key="id" class="level panel" data-level="{{item.id}}" bindtap="library"><view><view class="level-label">{{item.id}}</view><view>{{item.name}}</view></view><view class="muted">{{item.count}} 词 ›</view></view>
+    <view class="muted">分层为词频与编辑初筛，尚未按中国课标审核。雅思目标不等于词数或分数保证。</view>
+    <view class="row"><button data-filter="familiar" bindtap="list">熟词本</button><button data-filter="favorites" bindtap="list">收藏本</button><button bindtap="settings">学习设置</button></view>
+    <view class="muted">{{manifest.deepCount}} 词有完整五步解析；其余提供 WordNet 英文释义。当前内容状态可在设置查看。</view>
+  </block>
+</view>
