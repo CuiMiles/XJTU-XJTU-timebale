@@ -21,7 +21,7 @@ function shortRoom(room) {
         return "线上";
     return room;
 }
-function nowOffset(week, slots, currentDate) {
+function nowOffset(week, slots, currentDate, rowHeight = ROW_HEIGHT) {
     if (week !== (0, calendar_1.weekOf)(currentDate))
         return -1;
     const clock = new Date(Date.now() + 8 * 3600000);
@@ -35,13 +35,13 @@ function nowOffset(week, slots, currentDate) {
     for (let i = 0; i < ranges.length; i++) {
         const [start, end] = ranges[i];
         if (minute <= end)
-            return (i + (minute - start) / (end - start)) * ROW_HEIGHT;
+            return (i + (minute - start) / (end - start)) * rowHeight;
         if (i + 1 < ranges.length && minute < ranges[i + 1][0])
-            return (i + 1) * ROW_HEIGHT;
+            return (i + 1) * rowHeight;
     }
     return -1;
 }
-function frame(s, week, currentDate, selectedWeekday) {
+function frame(s, week, currentDate, selectedWeekday, rowHeight = ROW_HEIGHT) {
     const w = Math.max(1, Math.min(18, week));
     const days = calendar_1.DAYS.map((day, index) => {
         const date = (0, calendar_1.dateOf)(w, index + 1);
@@ -61,13 +61,14 @@ function frame(s, week, currentDate, selectedWeekday) {
         week: w,
         days,
         rows: slots.map((slot, index) => ({ n: index + 1, start: slot.split("-")[0], end: slot.split("-")[1] })),
-        cards: (0, engine_1.blocks)(items).map((b) => (Object.assign(Object.assign({}, b), { top: (b.start - 1) * ROW_HEIGHT, height: (b.end - b.start + 1) * ROW_HEIGHT - 4, day: days.findIndex((day) => day.date === b.o.date), id: b.o.course.id, original: b.o.originalDate, name: b.o.course.name, shortName: shortName(b.o.course.name), sectionText: (0, calendar_1.sectionLabel)(b.o.sections), room: b.o.room, shortRoom: shortRoom(b.o.room) }))),
+        cards: (0, engine_1.blocks)(items).map((b) => (Object.assign(Object.assign({}, b), { top: (b.start - 1) * rowHeight, height: (b.end - b.start + 1) * rowHeight - 4, day: days.findIndex((day) => day.date === b.o.date), id: b.o.course.id, original: b.o.originalDate, name: b.o.course.name, shortName: shortName(b.o.course.name), sectionText: (0, calendar_1.sectionLabel)(b.o.sections), room: b.o.room, shortRoom: shortRoom(b.o.room) }))),
         noClasses: items.length === 0,
         isCurrentWeek: w === (0, calendar_1.weekOf)(currentDate),
         month: `${Number((0, calendar_1.dateOf)(w, 1).slice(5, 7))}月`,
-        nowTop: nowOffset(w, slots, currentDate),
-        gridHeight: ROW_HEIGHT * 11,
-        rowHeight: ROW_HEIGHT,
+        nowTop: nowOffset(w, slots, currentDate, rowHeight),
+        todayIndex: days.findIndex((day) => day.today),
+        gridHeight: rowHeight * 11,
+        rowHeight,
     };
 }
 Page({
@@ -91,6 +92,7 @@ Page({
         noClasses: false,
         isCurrentWeek: false,
         nowTop: -1,
+        rowHeight: ROW_HEIGHT,
         loadError: false,
         month: "",
         detail: null,
@@ -127,6 +129,27 @@ Page({
         this.refresh();
         this.clockTimer = setInterval(() => this.refreshClock(), 60000);
     },
+    onReady() {
+        this.measureGrid();
+    },
+    onResize() {
+        this.measureGrid();
+    },
+    measureGrid() {
+        if (typeof wx.createSelectorQuery !== "function")
+            return;
+        const query = wx.createSelectorQuery().in(this);
+        query.select(".grid-scroll").boundingClientRect((rect) => {
+            if (!rect || rect.height <= 0)
+                return;
+            const width = wx.getWindowInfo().windowWidth;
+            const height = Math.floor((rect.height * 750) / width / 11 * 10) / 10;
+            if (height > 0 && Math.abs(height - this.data.rowHeight) > 0.5) {
+                this.setData({ rowHeight: height });
+                this.refresh();
+            }
+        }).exec();
+    },
     onHide() {
         if (this.clockTimer)
             clearInterval(this.clockTimer);
@@ -150,17 +173,17 @@ Page({
             this.refresh();
             return;
         }
-        const nowTop = nowOffset(this.data.week, (0, calendar_1.times)((0, calendar_1.dateOf)(this.data.week, 1)), currentDate);
+        const nowTop = nowOffset(this.data.week, (0, calendar_1.times)((0, calendar_1.dateOf)(this.data.week, 1)), currentDate, this.data.rowHeight);
         if (nowTop !== this.data.nowTop)
             this.setData({ nowTop, "frames[1].nowTop": nowTop });
     },
     refresh() {
         try {
-            const s = (0, storage_1.read)(), w = this.data.week, currentDate = (0, calendar_1.today)(), selectedWeekday = this.data.selectedWeekday, current = frame(s, w, currentDate, selectedWeekday);
+            const s = (0, storage_1.read)(), w = this.data.week, currentDate = (0, calendar_1.today)(), selectedWeekday = this.data.selectedWeekday, current = frame(s, w, currentDate, selectedWeekday, this.data.rowHeight);
             this.setData(Object.assign(Object.assign({ showParts: false, detail: null, selection: [], loadError: false, clockDate: currentDate, empty: s.courses.length === 0 }, current), { frames: [
-                    Object.assign(Object.assign({}, frame(s, w - 1, currentDate, selectedWeekday)), { slot: "previous" }),
+                    Object.assign(Object.assign({}, frame(s, w - 1, currentDate, selectedWeekday, this.data.rowHeight)), { slot: "previous" }),
                     Object.assign(Object.assign({}, current), { slot: "current" }),
-                    Object.assign(Object.assign({}, frame(s, w + 1, currentDate, selectedWeekday)), { slot: "next" }),
+                    Object.assign(Object.assign({}, frame(s, w + 1, currentDate, selectedWeekday, this.data.rowHeight)), { slot: "next" }),
                 ], swipeIndex: 1, selectedDate: current.days[selectedWeekday - 1].date.replace(/-/g, "/"), selectedDayName: calendar_1.DAYS[selectedWeekday - 1] }));
         }
         catch (e) {
@@ -293,20 +316,55 @@ Page({
         });
     },
     noop() { },
-    async import() {
-        const result = await wx.showModal({
-            title: "课表导入",
-            content: "教务系统一键导入正在预留。现在可粘贴课表 JSON，或手动添加课程。",
-            confirmText: "导入 JSON",
-            cancelText: "稍后",
-        });
-        if (result.confirm)
-            wx.navigateTo({ url: "/pages/transfer/transfer" });
+    import() {
+        wx.navigateTo({ url: "/pages/login/login" });
     },
     add() {
         wx.navigateTo({ url: "/pages/editor/editor" });
     },
-    manage() {
-        wx.switchTab({ url: "/pages/manage/manage" });
+    refreshRemote() {
+        this.import();
+    },
+    more() {
+        wx.showActionSheet({
+            itemList: ["导出课表", "关于我们"],
+            success: (result) => {
+                wx.navigateTo({
+                    url: result.tapIndex === 0
+                        ? "/pages/transfer/transfer?mode=backup"
+                        : "/pages/about/about",
+                });
+            },
+        });
+    },
+    editDetail() {
+        const d = this.data.detail;
+        if (!d)
+            return;
+        this.setData({ detail: null });
+        wx.navigateTo({ url: "/pages/editor/editor?id=" + encodeURIComponent(d.course.id) });
+    },
+    async deleteDetail() {
+        const d = this.data.detail;
+        if (!d)
+            return;
+        const result = await wx.showModal({
+            title: "删除这门课？",
+            content: "这门课的全部周次和单次调整都会删除。",
+            confirmText: "删除",
+            confirmColor: "#b84b56",
+        });
+        if (!result.confirm)
+            return;
+        try {
+            const s = (0, storage_1.read)();
+            s.courses = s.courses.filter((c) => c.id !== d.course.id);
+            s.adjustments = s.adjustments.filter((a) => a.courseId !== d.course.id);
+            (0, storage_1.write)(s);
+            this.refresh();
+        }
+        catch (e) {
+            (0, storage_1.error)(e);
+        }
     },
 });

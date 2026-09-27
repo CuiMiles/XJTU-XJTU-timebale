@@ -9,6 +9,7 @@ const {
 const { schedule, blocks, color } = require("../miniprogram/core/engine.js");
 const { EXAMPLE } = require("../miniprogram/core/prompt.js");
 const storage = require("../miniprogram/core/storage.js");
+const { mergeImported } = require("../miniprogram/core/import.js");
 const data = () => ({
   ...structuredClone(EXAMPLE),
   courses: [
@@ -110,6 +111,27 @@ test("conflicts preserve both courses; stable colors; disjoint sections split", 
   assert.equal(bs[0].conflicts, 2);
   assert.equal(bs[0].height, 226);
   assert.equal(color("数据库"), color("数据库"));
+});
+test("custom pastel color survives validation and changes the course card", () => {
+  const s = data();
+  s.courses[0].color = "mint";
+  const checked = parse(JSON.stringify({ ...s, backupVersion: 1 }), true);
+  assert.equal(checked.courses[0].color, "mint");
+  assert.equal(blocks(schedule({ ...checked, adjustments: [] }, 1))[0].theme.background, "#d9efe6");
+  s.courses[0].color = "#000000";
+  assert.throws(() => parse(JSON.stringify({ ...s, backupVersion: 1 }), true), /颜色无效/);
+});
+test("school refresh preserves manual sports classes and valid adjustments", () => {
+  const manual = { ...data().courses[0], id: "sport", name: "体育", weekday: 3, weeks: [1, 2] };
+  const oldRemote = { ...manual, id: "gmis-old", name: "旧课" };
+  const newRemote = { ...manual, id: "gmis-new", name: "新课" };
+  const current = { ...data(), courses: [manual, oldRemote], adjustments: [
+    { courseId: "sport", originalDate: "2026-09-16", date: "2026-09-16", sections: [3], room: "体育馆", cancelled: false },
+    { courseId: "gmis-old", originalDate: "2026-09-16", date: "2026-09-16", sections: [3], room: "教室", cancelled: false },
+  ] };
+  const merged = mergeImported(current, { ...current, courses: [newRemote], adjustments: [] });
+  assert.deepEqual(merged.courses.map((c) => c.id), ["sport", "gmis-new"]);
+  assert.deepEqual(merged.adjustments.map((a) => a.courseId), ["sport"]);
 });
 test("strict JSON field validation with friendly failures", () => {
   assert.equal(parse(JSON.stringify(EXAMPLE)).courses.length, 1);

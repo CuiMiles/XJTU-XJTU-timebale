@@ -1,0 +1,5 @@
+<view class="about">
+  <view class="name">小交课表</view>
+  <view class="author">作者：西交研一</view>
+  <image class="profile" src="/assets/xiaohongshu-home.jpg" mode="widthFix" show-menu-by-longpress="true" aria-label="作者小红书主页二维码"></image>
+</view>

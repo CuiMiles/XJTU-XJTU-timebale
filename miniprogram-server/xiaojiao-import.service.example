@@ -1,0 +1,22 @@
+[Unit]
+Description=Xiaojiao GMIS timetable importer
+After=network-online.target
+
+[Service]
+Type=simple
+User=xiaojiao
+Group=xiaojiao
+WorkingDirectory=/opt/xiaojiao/miniprogram-server
+Environment=CHROMIUM_PATH=/usr/bin/chromium
+Environment=XIAOJIAO_IMPORT_PORT=8766
+ExecStart=/opt/xiaojiao/miniprogram-server/.venv/bin/python server.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/tmp
+
+[Install]
+WantedBy=multi-user.target

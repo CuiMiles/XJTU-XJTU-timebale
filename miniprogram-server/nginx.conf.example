@@ -1,0 +1,21 @@
+# Replace the domain and certificate paths after domain filing and TLS issuance.
+limit_req_zone $binary_remote_addr zone=xiaojiao_import:10m rate=5r/m;
+
+server {
+    listen 443 ssl http2;
+    server_name timetable.example.com;
+    ssl_certificate /etc/letsencrypt/live/timetable.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/timetable.example.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    client_max_body_size 8k;
+
+    location = /api/gmis/import {
+        limit_req zone=xiaojiao_import burst=2 nodelay;
+        limit_req_status 429;
+        access_log off;
+        proxy_read_timeout 65s;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_pass http://127.0.0.1:8766;
+    }
+}

@@ -1,0 +1,4 @@
+.template { margin: 18rpx 0; padding: 20rpx 24rpx; border-radius: 14rpx; background: #e6f3eb; color: #345e4c; font-size: 25rpx; }
+.color-options { display: flex; flex-wrap: wrap; gap: 16rpx; }
+.color-option { width: 62rpx; height: 62rpx; display: flex; align-items: center; justify-content: center; border-radius: 14rpx; border: 3rpx solid transparent; color: #354a5a; font-size: 32rpx; font-weight: 700; }
+.color-option.chosen { border-color: #405a75; }

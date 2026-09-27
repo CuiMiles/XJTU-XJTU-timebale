@@ -4,6 +4,22 @@
   "compileType": "miniprogram",
   "appid": "touristappid",
   "projectname": "小交课表",
+  "packOptions": {
+    "ignore": [
+      { "type": "folder", "value": "vocabulary" },
+      { "type": "folder", "value": "worddata0" },
+      { "type": "folder", "value": "worddata1" },
+      { "type": "folder", "value": "worddata2" },
+      { "type": "folder", "value": "worddata3" },
+      { "type": "folder", "value": "worddata4" },
+      { "type": "folder", "value": "worddata5" },
+      { "type": "folder", "value": "core/vocabulary" },
+      { "type": "folder", "value": "pages/vocabulary" },
+      { "type": "folder", "value": "pages/manage" },
+      { "type": "folder", "value": "components" },
+      { "type": "suffix", "value": ".ts" }
+    ]
+  },
   "setting": {
     "es6": true,
     "enhance": true,

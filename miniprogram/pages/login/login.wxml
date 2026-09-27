@@ -1,0 +1,12 @@
+<view class="page">
+  <view class="title">导入教务课表</view>
+  <view class="panel">
+    <view class="label">学号 / 账号</view>
+    <input value="{{username}}" maxlength="100" placeholder="请输入统一身份认证账号" data-field="username" bindinput="input" />
+    <view class="label">密码</view>
+    <input value="{{password}}" password="true" maxlength="200" placeholder="请输入密码" data-field="password" bindinput="input" />
+    <button class="primary" loading="{{busy}}" disabled="{{busy || !configured}}" bindtap="submit">登录并导入</button>
+  </view>
+  <view wx:if="{{!configured}}" class="notice">当前尚未配置 HTTPS 服务域名，自动导入暂不可用。</view>
+  <button class="secondary" bindtap="json">从 JSON 导入</button>
+</view>

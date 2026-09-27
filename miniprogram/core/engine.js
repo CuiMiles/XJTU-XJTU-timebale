@@ -6,6 +6,7 @@ exports.courseTheme = courseTheme;
 exports.color = color;
 exports.blocks = blocks;
 const calendar_1 = require("./calendar");
+const colors_1 = require("./colors");
 function occurrence(s, courseId, originalDate) {
     const c = s.courses.find((c) => c.id === courseId);
     if (!c)
@@ -33,16 +34,6 @@ function schedule(s, week) {
     }));
     return out.sort((a, b) => a.date.localeCompare(b.date) || a.sections[0] - b.sections[0]);
 }
-const PALETTE = [
-    { background: "#ec799b", end: "#e26e93", text: "#ffffff", secondary: "#fff5f8" },
-    { background: "#a6bced", end: "#98afe1", text: "#192d57", secondary: "#2b426f" },
-    { background: "#65c9c8", end: "#53bcbc", text: "#153f48", secondary: "#265960" },
-    { background: "#e99178", end: "#e48670", text: "#492521", secondary: "#61352a" },
-    { background: "#73b9e7", end: "#64aee0", text: "#153b5a", secondary: "#2b5270" },
-    { background: "#b7ace8", end: "#a99bda", text: "#302557", secondary: "#49396d" },
-    { background: "#659bc8", end: "#598dbc", text: "#ffffff", secondary: "#f0f8ff" },
-    { background: "#e9a3bb", end: "#dc91af", text: "#4d2940", secondary: "#613b50" },
-];
 const NAMED_COLORS = [
     ["材料科学", 0], ["分布式系统", 1], ["日语二外", 2],
     ["数据库前沿", 3], ["马克思主义", 4], ["深度学习", 5],
@@ -52,11 +43,11 @@ const normalized = (s) => s.trim().replace(/\s+/g, "").replace(/（/g, "(").repl
 function courseTheme(name) {
     const match = NAMED_COLORS.find(([part]) => name.includes(part));
     if (match)
-        return PALETTE[match[1]];
+        return colors_1.COLORS[match[1]];
     let h = 0;
     for (const ch of normalized(name))
         h = (h * 31 + ch.charCodeAt(0)) | 0;
-    return PALETTE[Math.abs(h) % PALETTE.length];
+    return colors_1.COLORS[Math.abs(h) % colors_1.COLORS.length];
 }
 function color(name) {
     return courseTheme(name).background;
@@ -106,5 +97,8 @@ function blocks(items) {
         else
             merged.push(Object.assign(Object.assign({}, b), { members: [...b.members] }));
     }
-    return merged.map((b, i) => (Object.assign(Object.assign({}, b), { key: i, top: (b.start - 1) * 116, height: (b.end - b.start + 1) * 116 - 6, conflicts: merged.filter((x) => x.o.date === b.o.date && x.start <= b.end && x.end >= b.start).length, color: color(b.o.course.name), theme: courseTheme(b.o.course.name) })));
+    return merged.map((b, i) => {
+        var _a;
+        return (Object.assign(Object.assign({}, b), { key: i, top: (b.start - 1) * 116, height: (b.end - b.start + 1) * 116 - 6, conflicts: merged.filter((x) => x.o.date === b.o.date && x.start <= b.end && x.end >= b.start).length, color: ((_a = (0, colors_1.colorChoice)(b.o.course.color)) === null || _a === void 0 ? void 0 : _a.background) || color(b.o.course.name), theme: (0, colors_1.colorChoice)(b.o.course.color) || courseTheme(b.o.course.name) }));
+    });
 }

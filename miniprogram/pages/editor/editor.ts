@@ -1,6 +1,7 @@
 import { read, write, id, error } from "../../core/storage";
 import { course } from "../../core/validation";
 import { DAYS } from "../../core/calendar";
+import { COLORS } from "../../core/colors";
 Page({
   data: {
     id: "",
@@ -9,6 +10,8 @@ Page({
     teachers: "",
     room: "",
     note: "",
+    color: "blue",
+    colors: COLORS,
     weekday: 1,
     days: DAYS.map((d) => "星期" + d),
     sections: [] as number[],
@@ -24,8 +27,8 @@ Page({
         this.setData({ ...c, teachers: c.teachers.join("、") });
       } else
         this.setData({
-          weeks: Array.from({ length: 16 }, (_, i) => i + 1),
-          sections: [1, 2],
+          weeks: Array.from({ length: 8 }, (_, i) => i + 1),
+          sections: [3, 4],
         });
       this.options();
     } catch (e) {
@@ -46,6 +49,19 @@ Page({
   },
   input(e: any) {
     this.setData({ [e.currentTarget.dataset.field]: e.detail.value });
+  },
+  sport() {
+    this.setData({
+      name: "体育",
+      weekday: 3,
+      sections: [3, 4],
+      weeks: Array.from({ length: 8 }, (_, i) => i + 1),
+      color: "mint",
+    });
+    this.options();
+  },
+  setColor(e: any) {
+    this.setData({ color: e.currentTarget.dataset.color });
   },
   day(e: any) {
     this.setData({ weekday: Number(e.detail.value) + 1 });
@@ -84,7 +100,7 @@ Page({
       const s = read();
       if (d.id) {
         if (!s.courses.some((x) => x.id === d.id))
-          throw new Error("课程已不存在，请返回管理页");
+          throw new Error("课程已不存在，请返回课表");
         const has = s.adjustments.some((a) => a.courseId === d.id);
         if (has) {
           const r = await wx.showModal({

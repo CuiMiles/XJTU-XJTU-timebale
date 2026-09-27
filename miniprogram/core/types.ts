@@ -8,6 +8,7 @@ export interface Course {
   sections: number[];
   weeks: number[];
   note: string;
+  color?: string;
 }
 export interface Adjustment {
   courseId: string;

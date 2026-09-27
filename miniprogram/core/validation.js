@@ -5,6 +5,7 @@ exports.course = course;
 exports.parse = parse;
 exports.parseList = parseList;
 const calendar_1 = require("./calendar");
+const colors_1 = require("./colors");
 function fail(s) {
     throw new Error(s);
 }
@@ -32,17 +33,9 @@ function course(v, p = "课程") {
         fail(p + "星期须为1～7");
     if (!Array.isArray(v.teachers) || v.teachers.length > 20)
         fail(p + "教师须为文本数组");
-    return {
-        id: typeof v.id === "string" ? v.id : "",
-        name: str(v.name, p + "名称", true),
-        className: str(v.className, p + "班级"),
-        teachers: v.teachers.map((x) => str(x, p + "教师", true)),
-        room: str(v.room, p + "教室"),
-        weekday: v.weekday,
-        sections: numbers(v.sections, 11, p + "节次"),
-        weeks: numbers(v.weeks, 18, p + "周次"),
-        note: str(v.note, p + "备注"),
-    };
+    if (v.color !== undefined && !(0, colors_1.colorChoice)(v.color))
+        fail(p + "颜色无效");
+    return Object.assign({ id: typeof v.id === "string" ? v.id : "", name: str(v.name, p + "名称", true), className: str(v.className, p + "班级"), teachers: v.teachers.map((x) => str(x, p + "教师", true)), room: str(v.room, p + "教室"), weekday: v.weekday, sections: numbers(v.sections, 11, p + "节次"), weeks: numbers(v.weeks, 18, p + "周次"), note: str(v.note, p + "备注") }, (v.color === undefined ? {} : { color: v.color }));
 }
 function parse(text, backup = false) {
     if (text.length > 2000000)

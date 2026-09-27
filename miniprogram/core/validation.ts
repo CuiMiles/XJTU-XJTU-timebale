@@ -1,5 +1,6 @@
 import { Course, Store, Adjustment } from "./types";
 import { validDate, weekOf, weekdayOf } from "./calendar";
+import { colorChoice } from "./colors";
 function fail(s: string): never {
   throw new Error(s);
 }
@@ -28,6 +29,7 @@ export function course(v: any, p = "课程"): Course {
     fail(p + "星期须为1～7");
   if (!Array.isArray(v.teachers) || v.teachers.length > 20)
     fail(p + "教师须为文本数组");
+  if (v.color !== undefined && !colorChoice(v.color)) fail(p + "颜色无效");
   return {
     id: typeof v.id === "string" ? v.id : "",
     name: str(v.name, p + "名称", true),
@@ -38,6 +40,7 @@ export function course(v: any, p = "课程"): Course {
     sections: numbers(v.sections, 11, p + "节次"),
     weeks: numbers(v.weeks, 18, p + "周次"),
     note: str(v.note, p + "备注"),
+    ...(v.color === undefined ? {} : { color: v.color }),
   };
 }
 export function parse(text: string, backup = false): Store {

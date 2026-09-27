@@ -1,0 +1,5 @@
+page { background: #fff; }
+.about { display: flex; flex-direction: column; align-items: center; padding: 64rpx 30rpx 80rpx; color: #2d4358; }
+.name { font-size: 42rpx; font-weight: 650; }
+.author { margin: 16rpx 0 40rpx; font-size: 26rpx; color: #65798b; }
+.profile { width: 650rpx; max-width: 88vw; border-radius: 18rpx; }

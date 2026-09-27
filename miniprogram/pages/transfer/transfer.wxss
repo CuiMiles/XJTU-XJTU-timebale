@@ -1,0 +1,4 @@
+page { background: #fff; }
+.title { color: #2d4358; }
+.panel { border: 1rpx solid #edf0f4; }
+.preview-title { font-size: 30rpx; font-weight: 620; color: #344e67; }

@@ -39,13 +39,45 @@ for (const route of routes) {
   });
 }
 test("tab destinations and literal navigation paths exist", () => {
-  for (const tab of app.tabBar.list)
+  for (const tab of app.tabBar?.list || [])
     assert.ok(app.pages.includes(tab.pagePath));
   for (const route of routes) {
     const code = fs.readFileSync(path.join(root, route + ".js"), "utf8");
     for (const m of code.matchAll(/\/(?:vocabulary\/)?pages\/[a-z]+\/[a-z]+/g))
       assert.ok(routes.includes(m[0].slice(1)), m[0]);
   }
+});
+test("the mini-program opens directly to the timetable without extra tabs", () => {
+  assert.equal(app.pages[0], "pages/home/home");
+  assert.equal(app.tabBar, undefined);
+  assert.ok(!routes.some((route) => route.includes("vocabulary") || route.includes("manage")));
+});
+test("timetable measures eleven rows to fill the remaining screen", () => {
+  global.wx = {
+    getStorageSync: () => undefined,
+    getWindowInfo: () => ({ windowWidth: 375 }),
+    createSelectorQuery: () => ({
+      in() { return this; },
+      select() { return this; },
+      boundingClientRect(callback) { callback({ height: 550 }); return this; },
+      exec() {},
+    }),
+  };
+  const p = instance("pages/home/home");
+  p.refresh();
+  p.onReady();
+  assert.equal(p.data.rowHeight, 100);
+  assert.equal(p.data.frames[1].gridHeight, 1100);
+});
+test("sports template uses Wednesday third and fourth sections in weeks one to eight", () => {
+  const p = instance("pages/editor/editor");
+  p.onLoad({});
+  p.sport();
+  assert.equal(p.data.name, "体育");
+  assert.equal(p.data.weekday, 3);
+  assert.deepEqual(p.data.sections, [3, 4]);
+  assert.deepEqual(p.data.weeks, [1, 2, 3, 4, 5, 6, 7, 8]);
+  assert.equal(p.data.color, "mint");
 });
 function instance(route) {
   const p = definitions[route];
@@ -208,17 +240,12 @@ test("today header uses Beijing date and disappears on other weeks; top gap excl
   }
 });
 
-test("native week swiper keeps an empty seven-day grid and exposes the reserved import", async () => {
+test("native week swiper keeps an empty seven-day grid and opens account import", () => {
   const now = Date.now;
-  let modal;
   let destination = "";
   Date.now = () => Date.parse("2026-09-14T00:30:00Z");
   global.wx = {
     getStorageSync: () => undefined,
-    showModal: async (options) => {
-      modal = options;
-      return { confirm: true };
-    },
     navigateTo: ({ url }) => { destination = url; },
   };
   const p = instance("pages/home/home");
@@ -242,7 +269,6 @@ test("native week swiper keeps an empty seven-day grid and exposes the reserved 
   } finally {
     Date.now = now;
   }
-  await p.import();
-  assert.match(modal.content, /教务系统一键导入正在预留/);
-  assert.equal(destination, "/pages/transfer/transfer");
+  p.import();
+  assert.equal(destination, "/pages/login/login");
 });

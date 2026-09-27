@@ -1,0 +1,8 @@
+page { background: #fff; }
+.page { padding-top: 38rpx; }
+.title { color: #2d4358; }
+.panel { border: 1rpx solid #edf0f4; box-shadow: 0 4rpx 16rpx #60788c12; }
+.label { margin-top: 18rpx; }
+.primary { margin-top: 34rpx; }
+.notice { background: #f5f7f9; color: #61758b; }
+.secondary { background: #edf2f6; }

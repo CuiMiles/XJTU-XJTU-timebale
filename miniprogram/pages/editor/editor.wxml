@@ -1,6 +1,6 @@
 <view class="page"
   ><view class="title">{{id ? '编辑课程' : '添加一门课'}}</view
-  ><view class="muted">为自己的新学期，安排一点秩序。</view
+  ><view wx:if="{{!id}}" class="template" bindtap="sport">使用体育课模板 · 周三 3–4 节 / 1–8 周</view
   ><view class="panel"
     ><view class="label">课程名称 *</view
     ><input
@@ -29,7 +29,9 @@
       maxlength="500"
       data-field="teachers"
       bindinput="input"
-    /><view class="label">星期</view
+    /><view class="label">颜色</view
+    ><view class="color-options"><view wx:for="{{colors}}" wx:key="id" class="color-option {{color === item.id ? 'chosen' : ''}}" style="background:{{item.background}};" data-color="{{item.id}}" bindtap="setColor" aria-label="{{item.label}}"><text wx:if="{{color === item.id}}">✓</text></view></view
+    ><view class="label">星期</view
     ><picker range="{{days}}" value="{{weekday - 1}}" bindchange="day"
       ><view class="picker">{{days[weekday - 1]}} ▾</view></picker
     ><view class="label">节次 · 可多选</view
@@ -60,7 +62,7 @@
         bindtap="toggle"
         >{{item.n}}</view
       ></view
-    ><view class="muted">17～18周为考试周，只有明确选择才会排课。</view
+    ><view class="muted">17～18周可手动勾选。</view
     ><view class="label">备注</view
     ><textarea
       value="{{note}}"

@@ -346,11 +346,19 @@ test("word card hides Chinese again on a different entry or sense; all component
 });
 test("packaging guard: main and each package under conservative 2 MiB budget; total below 20 MiB", () => {
   const app = require("../miniprogram/app.json"),
+    project = require("../project.config.json"),
     totals = { main: 0 };
   for (const p of app.subPackages) totals[p.root] = 0;
+  const excluded = (rel) => project.packOptions.ignore.some((rule) =>
+    rule.type === "folder" ? rel === rule.value || rel.startsWith(rule.value + "/") :
+    rule.type === "suffix" ? rel.endsWith(rule.value) :
+    rule.type === "file" ? rel === rule.value : false,
+  );
   function walk(dir) {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const f = path.join(dir, e.name);
+      const relative = path.relative(root, f).split(path.sep).join("/");
+      if (excluded(relative)) continue;
       if (e.isDirectory()) walk(f);
       else {
         const rel = path.relative(root, f).split(path.sep);
