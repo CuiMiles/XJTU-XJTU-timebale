@@ -3,9 +3,83 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const calendar_1 = require("../../core/calendar");
 const engine_1 = require("../../core/engine");
 const storage_1 = require("../../core/storage");
+const ROW_HEIGHT = 96;
+function shortName(name) {
+    return name
+        .replace(/（校企）|（实践）|（AI通识-线上）/g, "")
+        .replace("材料科学进展", "材料进展")
+        .replace("马克思主义与当代科技", "马克思主义")
+        .replace("数据库系统原理与应用", "数据库系统")
+        .replace("分布式系统原理与应用", "分布式系统")
+        .replace("深度学习及应用", "深度学习")
+        .replace("数据库前沿技术", "数据库前沿");
+}
+function shortRoom(room) {
+    if (room.includes("羽毛球"))
+        return "羽毛球场";
+    if (room.includes("雨课堂"))
+        return "线上";
+    return room;
+}
+function nowOffset(week, slots, currentDate) {
+    if (week !== (0, calendar_1.weekOf)(currentDate))
+        return -1;
+    const clock = new Date(Date.now() + 8 * 3600000);
+    const minute = clock.getUTCHours() * 60 + clock.getUTCMinutes();
+    const ranges = slots.map((slot) => slot.split("-").map((time) => {
+        const [hour, min] = time.split(":").map(Number);
+        return hour * 60 + min;
+    }));
+    if (minute < ranges[0][0] || minute > ranges[ranges.length - 1][1])
+        return -1;
+    for (let i = 0; i < ranges.length; i++) {
+        const [start, end] = ranges[i];
+        if (minute <= end)
+            return (i + (minute - start) / (end - start)) * ROW_HEIGHT;
+        if (i + 1 < ranges.length && minute < ranges[i + 1][0])
+            return (i + 1) * ROW_HEIGHT;
+    }
+    return -1;
+}
+function frame(s, week, currentDate, selectedWeekday) {
+    const w = Math.max(1, Math.min(18, week));
+    const days = calendar_1.DAYS.map((day, index) => {
+        const date = (0, calendar_1.dateOf)(w, index + 1);
+        return {
+            name: day,
+            date,
+            label: String(Number(date.slice(8))),
+            monthHint: date.slice(8) === "01" ? `${Number(date.slice(5, 7))}月` : "",
+            today: date === currentDate,
+            selected: selectedWeekday === index + 1,
+            holiday: calendar_1.HOLIDAYS.includes(date),
+        };
+    });
+    const slots = (0, calendar_1.times)((0, calendar_1.dateOf)(w, 1));
+    const items = (0, engine_1.schedule)(s, w);
+    return {
+        week: w,
+        days,
+        rows: slots.map((slot, index) => ({ n: index + 1, start: slot.split("-")[0], end: slot.split("-")[1] })),
+        cards: (0, engine_1.blocks)(items).map((b) => (Object.assign(Object.assign({}, b), { top: (b.start - 1) * ROW_HEIGHT, height: (b.end - b.start + 1) * ROW_HEIGHT - 4, day: days.findIndex((day) => day.date === b.o.date), id: b.o.course.id, original: b.o.originalDate, name: b.o.course.name, shortName: shortName(b.o.course.name), sectionText: (0, calendar_1.sectionLabel)(b.o.sections), room: b.o.room, shortRoom: shortRoom(b.o.room) }))),
+        noClasses: items.length === 0,
+        isCurrentWeek: w === (0, calendar_1.weekOf)(currentDate),
+        month: `${Number((0, calendar_1.dateOf)(w, 1).slice(5, 7))}月`,
+        nowTop: nowOffset(w, slots, currentDate),
+        gridHeight: ROW_HEIGHT * 11,
+        rowHeight: ROW_HEIGHT,
+    };
+}
 Page({
     data: {
         week: 1,
+        selectedWeekday: 1,
+        selectedDate: "",
+        selectedDayName: "一",
+        clockDate: "",
+        frames: [],
+        swipeIndex: 1,
+        swiperDuration: 280,
         navTop: 24,
         navRight: 100,
         showParts: false,
@@ -16,12 +90,14 @@ Page({
         empty: true,
         noClasses: false,
         isCurrentWeek: false,
+        nowTop: -1,
         loadError: false,
         month: "",
         detail: null,
         selection: [],
     },
     touchOrigin: null,
+    clockTimer: null,
     suppressTapUntil: 0,
     onLoad() {
         try {
@@ -35,43 +111,57 @@ Page({
         catch (_a) {
             /* 无系统尺寸时保留默认安全区域。 */
         }
-        this.setData({ week: Math.max(1, Math.min(18, (0, calendar_1.weekOf)((0, calendar_1.today)()))) });
+        const currentDate = (0, calendar_1.today)();
+        this.setData({ week: Math.max(1, Math.min(18, (0, calendar_1.weekOf)(currentDate))),
+            selectedWeekday: (0, calendar_1.weekdayOf)(currentDate) });
     },
     onShow() {
+        if (this.clockTimer)
+            clearInterval(this.clockTimer);
+        if (this.data.clockDate && this.data.clockDate !== (0, calendar_1.today)() && this.data.isCurrentWeek) {
+            this.setData({
+                week: Math.max(1, Math.min(18, (0, calendar_1.weekOf)((0, calendar_1.today)()))),
+                selectedWeekday: (0, calendar_1.weekdayOf)((0, calendar_1.today)()),
+            });
+        }
         this.refresh();
+        this.clockTimer = setInterval(() => this.refreshClock(), 60000);
+    },
+    onHide() {
+        if (this.clockTimer)
+            clearInterval(this.clockTimer);
+        this.clockTimer = null;
+    },
+    onUnload() {
+        if (this.clockTimer)
+            clearInterval(this.clockTimer);
+        this.clockTimer = null;
+    },
+    refreshClock() {
+        if (this.data.detail || this.data.selection.length)
+            return;
+        const currentDate = (0, calendar_1.today)();
+        if (currentDate !== this.data.clockDate) {
+            if (this.data.isCurrentWeek)
+                this.setData({
+                    week: Math.max(1, Math.min(18, (0, calendar_1.weekOf)(currentDate))),
+                    selectedWeekday: (0, calendar_1.weekdayOf)(currentDate),
+                });
+            this.refresh();
+            return;
+        }
+        const nowTop = nowOffset(this.data.week, (0, calendar_1.times)((0, calendar_1.dateOf)(this.data.week, 1)), currentDate);
+        if (nowTop !== this.data.nowTop)
+            this.setData({ nowTop, "frames[1].nowTop": nowTop });
     },
     refresh() {
         try {
-            const s = (0, storage_1.read)(), w = this.data.week, currentDate = (0, calendar_1.today)(), actual = (0, calendar_1.weekOf)(currentDate);
-            const days = calendar_1.DAYS.map((d, i) => {
-                const date = (0, calendar_1.dateOf)(w, i + 1);
-                return {
-                    name: d,
-                    date,
-                    label: String(Number(date.slice(8))),
-                    monthHint: date.slice(8) === "01" ? `${Number(date.slice(5, 7))}月` : "",
-                    today: date === currentDate,
-                    holiday: calendar_1.HOLIDAYS.includes(date),
-                };
-            });
-            const items = (0, engine_1.schedule)(s, w);
-            this.setData({
-                showParts: false,
-                detail: null,
-                selection: [],
-                loadError: false,
-                empty: s.courses.length === 0,
-                noClasses: items.length === 0,
-                days,
-                rows: (0, calendar_1.times)((0, calendar_1.dateOf)(w, 1)).map((t, i) => ({
-                    n: i + 1,
-                    start: t.split("-")[0],
-                    end: t.split("-")[1],
-                })),
-                cards: (0, engine_1.blocks)(items).map((b) => (Object.assign(Object.assign({}, b), { day: days.findIndex((d) => d.date === b.o.date), id: b.o.course.id, original: b.o.originalDate, name: b.o.course.name, sectionText: (0, calendar_1.sectionLabel)(b.o.sections), room: b.o.room }))),
-                isCurrentWeek: w === actual,
-                month: `${Number((0, calendar_1.dateOf)(w, 1).slice(5, 7))}月`,
-            });
+            const s = (0, storage_1.read)(), w = this.data.week, currentDate = (0, calendar_1.today)(), selectedWeekday = this.data.selectedWeekday, current = frame(s, w, currentDate, selectedWeekday);
+            this.setData(Object.assign(Object.assign({ showParts: false, detail: null, selection: [], loadError: false, clockDate: currentDate, empty: s.courses.length === 0 }, current), { frames: [
+                    Object.assign(Object.assign({}, frame(s, w - 1, currentDate, selectedWeekday)), { slot: "previous" }),
+                    Object.assign(Object.assign({}, current), { slot: "current" }),
+                    Object.assign(Object.assign({}, frame(s, w + 1, currentDate, selectedWeekday)), { slot: "next" }),
+                ], swipeIndex: 1, selectedDate: current.days[selectedWeekday - 1].date.replace(/-/g, "/"), selectedDayName: calendar_1.DAYS[selectedWeekday - 1] }));
         }
         catch (e) {
             this.setData({ loadError: true });
@@ -95,8 +185,31 @@ Page({
         this.refresh();
     },
     current() {
-        this.setData({ week: Math.max(1, Math.min(18, (0, calendar_1.weekOf)((0, calendar_1.today)()))) });
+        const currentDate = (0, calendar_1.today)();
+        this.setData({ week: Math.max(1, Math.min(18, (0, calendar_1.weekOf)(currentDate))),
+            selectedWeekday: (0, calendar_1.weekdayOf)(currentDate) });
         this.refresh();
+    },
+    selectDay(e) {
+        const selectedWeekday = Number(e.currentTarget.dataset.day);
+        if (!Number.isInteger(selectedWeekday) || selectedWeekday < 1 || selectedWeekday > 7)
+            return;
+        this.setData({ selectedWeekday });
+        this.refresh();
+    },
+    swipeChange(e) {
+        var _a;
+        const index = Number(e.detail.current);
+        if (index === 1 || index < 0 || index > 2)
+            return;
+        const nextWeek = (_a = this.data.frames[index]) === null || _a === void 0 ? void 0 : _a.week;
+        if (!nextWeek || nextWeek === this.data.week) {
+            this.setData({ swipeIndex: 1 });
+            return;
+        }
+        this.setData({ week: nextWeek, swiperDuration: 0 });
+        this.refresh();
+        setTimeout(() => this.setData({ swiperDuration: 280 }), 30);
     },
     touchStart(e) {
         this.touchOrigin =
@@ -127,10 +240,14 @@ Page({
         }
     },
     open(e) {
+        var _a;
         if (Date.now() < this.suppressTapUntil)
             return;
-        const b = this.data.cards[Number(e.currentTarget.dataset.index)];
-        const options = this.data.cards.filter((x) => x.day === b.day && x.start <= b.end && x.end >= b.start);
+        const source = ((_a = this.data.frames.find((f) => f.week === Number(e.currentTarget.dataset.week))) === null || _a === void 0 ? void 0 : _a.cards) || this.data.cards;
+        const b = source[Number(e.currentTarget.dataset.index)];
+        if (!b)
+            return;
+        const options = source.filter((x) => x.day === b.day && x.start <= b.end && x.end >= b.start);
         const unique = options.filter((x, i) => options.findIndex((y) => y.key === x.key) === i);
         if (unique.length > 1)
             this.setData({ selection: unique });
@@ -176,8 +293,15 @@ Page({
         });
     },
     noop() { },
-    import() {
-        wx.navigateTo({ url: "/pages/transfer/transfer" });
+    async import() {
+        const result = await wx.showModal({
+            title: "课表导入",
+            content: "教务系统一键导入正在预留。现在可粘贴课表 JSON，或手动添加课程。",
+            confirmText: "导入 JSON",
+            cancelText: "稍后",
+        });
+        if (result.confirm)
+            wx.navigateTo({ url: "/pages/transfer/transfer" });
     },
     add() {
         wx.navigateTo({ url: "/pages/editor/editor" });

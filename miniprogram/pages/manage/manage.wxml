@@ -11,7 +11,7 @@
     ><button class="primary" bindtap="add">＋ 手动添加课程</button
     ><view class="row"
       ><button style="flex: 1" data-mode="import" bindtap="transfer">
-        导入课表</button
+        导入 JSON</button
       ><button style="flex: 1" data-mode="backup" bindtap="transfer">
         备份与恢复
       </button></view

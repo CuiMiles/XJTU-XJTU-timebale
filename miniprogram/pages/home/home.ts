@@ -11,9 +11,94 @@ import {
 } from "../../core/calendar";
 import { schedule, blocks } from "../../core/engine";
 import { read, error } from "../../core/storage";
+import { Store } from "../../core/types";
+
+const ROW_HEIGHT = 96;
+function shortName(name: string): string {
+  return name
+    .replace(/（校企）|（实践）|（AI通识-线上）/g, "")
+    .replace("材料科学进展", "材料进展")
+    .replace("马克思主义与当代科技", "马克思主义")
+    .replace("数据库系统原理与应用", "数据库系统")
+    .replace("分布式系统原理与应用", "分布式系统")
+    .replace("深度学习及应用", "深度学习")
+    .replace("数据库前沿技术", "数据库前沿");
+}
+function shortRoom(room: string): string {
+  if (room.includes("羽毛球")) return "羽毛球场";
+  if (room.includes("雨课堂")) return "线上";
+  return room;
+}
+function nowOffset(week: number, slots: string[], currentDate: string): number {
+  if (week !== weekOf(currentDate)) return -1;
+  const clock = new Date(Date.now() + 8 * 3600000);
+  const minute = clock.getUTCHours() * 60 + clock.getUTCMinutes();
+  const ranges = slots.map((slot) =>
+    slot.split("-").map((time) => {
+      const [hour, min] = time.split(":").map(Number);
+      return hour * 60 + min;
+    }),
+  );
+  if (minute < ranges[0][0] || minute > ranges[ranges.length - 1][1]) return -1;
+  for (let i = 0; i < ranges.length; i++) {
+    const [start, end] = ranges[i];
+    if (minute <= end) return (i + (minute - start) / (end - start)) * ROW_HEIGHT;
+    if (i + 1 < ranges.length && minute < ranges[i + 1][0])
+      return (i + 1) * ROW_HEIGHT;
+  }
+  return -1;
+}
+function frame(s: Store, week: number, currentDate: string, selectedWeekday: number) {
+  const w = Math.max(1, Math.min(18, week));
+  const days = DAYS.map((day, index) => {
+    const date = dateOf(w, index + 1);
+    return {
+      name: day,
+      date,
+      label: String(Number(date.slice(8))),
+      monthHint: date.slice(8) === "01" ? `${Number(date.slice(5, 7))}月` : "",
+      today: date === currentDate,
+      selected: selectedWeekday === index + 1,
+      holiday: HOLIDAYS.includes(date),
+    };
+  });
+  const slots = times(dateOf(w, 1));
+  const items = schedule(s, w);
+  return {
+    week: w,
+    days,
+    rows: slots.map((slot, index) => ({ n: index + 1, start: slot.split("-")[0], end: slot.split("-")[1] })),
+    cards: blocks(items).map((b) => ({
+      ...b,
+      top: (b.start - 1) * ROW_HEIGHT,
+      height: (b.end - b.start + 1) * ROW_HEIGHT - 4,
+      day: days.findIndex((day) => day.date === b.o.date),
+      id: b.o.course.id,
+      original: b.o.originalDate,
+      name: b.o.course.name,
+      shortName: shortName(b.o.course.name),
+      sectionText: sectionLabel(b.o.sections),
+      room: b.o.room,
+      shortRoom: shortRoom(b.o.room),
+    })),
+    noClasses: items.length === 0,
+    isCurrentWeek: w === weekOf(currentDate),
+    month: `${Number(dateOf(w, 1).slice(5, 7))}月`,
+    nowTop: nowOffset(w, slots, currentDate),
+    gridHeight: ROW_HEIGHT * 11,
+    rowHeight: ROW_HEIGHT,
+  };
+}
 Page({
   data: {
     week: 1,
+    selectedWeekday: 1,
+    selectedDate: "",
+    selectedDayName: "一",
+    clockDate: "",
+    frames: [] as any[],
+    swipeIndex: 1,
+    swiperDuration: 280,
     navTop: 24,
     navRight: 100,
     showParts: false,
@@ -27,12 +112,14 @@ Page({
     empty: true,
     noClasses: false,
     isCurrentWeek: false,
+    nowTop: -1,
     loadError: false,
     month: "",
     detail: null as any,
     selection: [] as any[],
   },
   touchOrigin: null as { x: number; y: number } | null,
+  clockTimer: null as number | null,
   suppressTapUntil: 0,
   onLoad() {
     try {
@@ -46,54 +133,67 @@ Page({
       /* 无系统尺寸时保留默认安全区域。 */
     }
 
-    this.setData({ week: Math.max(1, Math.min(18, weekOf(today()))) });
+    const currentDate = today();
+    this.setData({ week: Math.max(1, Math.min(18, weekOf(currentDate))),
+                   selectedWeekday: weekdayOf(currentDate) });
   },
   onShow() {
+    if (this.clockTimer) clearInterval(this.clockTimer);
+    if (this.data.clockDate && this.data.clockDate !== today() && this.data.isCurrentWeek) {
+      this.setData({
+        week: Math.max(1, Math.min(18, weekOf(today()))),
+        selectedWeekday: weekdayOf(today()),
+      });
+    }
     this.refresh();
+    this.clockTimer = setInterval(() => this.refreshClock(), 60000);
+  },
+  onHide() {
+    if (this.clockTimer) clearInterval(this.clockTimer);
+    this.clockTimer = null;
+  },
+  onUnload() {
+    if (this.clockTimer) clearInterval(this.clockTimer);
+    this.clockTimer = null;
+  },
+  refreshClock() {
+    if (this.data.detail || this.data.selection.length) return;
+    const currentDate = today();
+    if (currentDate !== this.data.clockDate) {
+      if (this.data.isCurrentWeek) this.setData({
+        week: Math.max(1, Math.min(18, weekOf(currentDate))),
+        selectedWeekday: weekdayOf(currentDate),
+      });
+      this.refresh();
+      return;
+    }
+    const nowTop = nowOffset(this.data.week, times(dateOf(this.data.week, 1)), currentDate);
+    if (nowTop !== this.data.nowTop)
+      this.setData({ nowTop, "frames[1].nowTop": nowTop });
   },
   refresh() {
     try {
       const s = read(),
         w = this.data.week,
         currentDate = today(),
-        actual = weekOf(currentDate);
-      const days = DAYS.map((d, i) => {
-        const date = dateOf(w, i + 1);
-        return {
-          name: d,
-          date,
-          label: String(Number(date.slice(8))),
-          monthHint:
-            date.slice(8) === "01" ? `${Number(date.slice(5, 7))}月` : "",
-          today: date === currentDate,
-          holiday: HOLIDAYS.includes(date),
-        };
-      });
-      const items = schedule(s, w);
+        selectedWeekday = this.data.selectedWeekday,
+        current = frame(s, w, currentDate, selectedWeekday);
       this.setData({
         showParts: false,
         detail: null,
         selection: [],
         loadError: false,
+        clockDate: currentDate,
         empty: s.courses.length === 0,
-        noClasses: items.length === 0,
-        days,
-        rows: times(dateOf(w, 1)).map((t, i) => ({
-          n: i + 1,
-          start: t.split("-")[0],
-          end: t.split("-")[1],
-        })),
-        cards: blocks(items).map((b) => ({
-          ...b,
-          day: days.findIndex((d) => d.date === b.o.date),
-          id: b.o.course.id,
-          original: b.o.originalDate,
-          name: b.o.course.name,
-          sectionText: sectionLabel(b.o.sections),
-          room: b.o.room,
-        })),
-        isCurrentWeek: w === actual,
-        month: `${Number(dateOf(w, 1).slice(5, 7))}月`,
+        ...current,
+        frames: [
+          { ...frame(s, w - 1, currentDate, selectedWeekday), slot: "previous" },
+          { ...current, slot: "current" },
+          { ...frame(s, w + 1, currentDate, selectedWeekday), slot: "next" },
+        ],
+        swipeIndex: 1,
+        selectedDate: current.days[selectedWeekday - 1].date.replace(/-/g, "/"),
+        selectedDayName: DAYS[selectedWeekday - 1],
       });
     } catch (e) {
       this.setData({ loadError: true });
@@ -117,8 +217,28 @@ Page({
     this.refresh();
   },
   current() {
-    this.setData({ week: Math.max(1, Math.min(18, weekOf(today()))) });
+    const currentDate = today();
+    this.setData({ week: Math.max(1, Math.min(18, weekOf(currentDate))),
+                   selectedWeekday: weekdayOf(currentDate) });
     this.refresh();
+  },
+  selectDay(e: any) {
+    const selectedWeekday = Number(e.currentTarget.dataset.day);
+    if (!Number.isInteger(selectedWeekday) || selectedWeekday < 1 || selectedWeekday > 7) return;
+    this.setData({ selectedWeekday });
+    this.refresh();
+  },
+  swipeChange(e: any) {
+    const index = Number(e.detail.current);
+    if (index === 1 || index < 0 || index > 2) return;
+    const nextWeek = this.data.frames[index]?.week;
+    if (!nextWeek || nextWeek === this.data.week) {
+      this.setData({ swipeIndex: 1 });
+      return;
+    }
+    this.setData({ week: nextWeek, swiperDuration: 0 });
+    this.refresh();
+    setTimeout(() => this.setData({ swiperDuration: 280 }), 30);
   },
   touchStart(e: any) {
     this.touchOrigin =
@@ -150,8 +270,10 @@ Page({
   },
   open(e: any) {
     if (Date.now() < this.suppressTapUntil) return;
-    const b = this.data.cards[Number(e.currentTarget.dataset.index)];
-    const options = this.data.cards.filter(
+    const source = this.data.frames.find((f: any) => f.week === Number(e.currentTarget.dataset.week))?.cards || this.data.cards;
+    const b = source[Number(e.currentTarget.dataset.index)];
+    if (!b) return;
+    const options = source.filter(
       (x: any) => x.day === b.day && x.start <= b.end && x.end >= b.start,
     );
     const unique = options.filter(
@@ -209,8 +331,14 @@ Page({
     });
   },
   noop() {},
-  import() {
-    wx.navigateTo({ url: "/pages/transfer/transfer" });
+  async import() {
+    const result = await wx.showModal({
+      title: "课表导入",
+      content: "教务系统一键导入正在预留。现在可粘贴课表 JSON，或手动添加课程。",
+      confirmText: "导入 JSON",
+      cancelText: "稍后",
+    });
+    if (result.confirm) wx.navigateTo({ url: "/pages/transfer/transfer" });
   },
   add() {
     wx.navigateTo({ url: "/pages/editor/editor" });

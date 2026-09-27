@@ -9,23 +9,19 @@
   ],
   "window": {
     "navigationBarTitleText": "小交课表",
-    "navigationBarBackgroundColor": "#f7f9fc",
+    "navigationBarBackgroundColor": "#e9eaf4",
     "navigationBarTextStyle": "black",
-    "backgroundColor": "#f7f9fc"
+    "backgroundColor": "#e9eaf4"
   },
   "tabBar": {
-    "color": "#8893a1",
-    "selectedColor": "#3d6e94",
-    "backgroundColor": "#ffffff",
+    "color": "#6e7a90",
+    "selectedColor": "#314f7b",
+    "backgroundColor": "#bfd2e6",
     "borderStyle": "white",
     "list": [
       {
         "pagePath": "pages/home/home",
         "text": "课表"
-      },
-      {
-        "pagePath": "pages/vocabulary/vocabulary",
-        "text": "背词"
       },
       {
         "pagePath": "pages/manage/manage",

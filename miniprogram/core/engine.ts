@@ -39,17 +39,25 @@ export function schedule(s: Store, week: number): Occurrence[] {
   );
 }
 const PALETTE = [
-  { background: "#e2edf8", text: "#365b7c", secondary: "#63809a" },
-  { background: "#e5efdf", text: "#456640", secondary: "#73896b" },
-  { background: "#f6efcf", text: "#78652f", secondary: "#9a8853" },
-  { background: "#eee6f6", text: "#66517f", secondary: "#8b789f" },
-  { background: "#f5e4eb", text: "#86576c", secondary: "#a67f90" },
-  { background: "#deefed", text: "#396d69", secondary: "#6c928e" },
-  { background: "#f7e8d8", text: "#825e3d", secondary: "#a1876b" },
+  { background: "#ec799b", end: "#e26e93", text: "#ffffff", secondary: "#fff5f8" },
+  { background: "#a6bced", end: "#98afe1", text: "#192d57", secondary: "#2b426f" },
+  { background: "#65c9c8", end: "#53bcbc", text: "#153f48", secondary: "#265960" },
+  { background: "#e99178", end: "#e48670", text: "#492521", secondary: "#61352a" },
+  { background: "#73b9e7", end: "#64aee0", text: "#153b5a", secondary: "#2b5270" },
+  { background: "#b7ace8", end: "#a99bda", text: "#302557", secondary: "#49396d" },
+  { background: "#659bc8", end: "#598dbc", text: "#ffffff", secondary: "#f0f8ff" },
+  { background: "#e9a3bb", end: "#dc91af", text: "#4d2940", secondary: "#613b50" },
+];
+const NAMED_COLORS: [string, number][] = [
+  ["材料科学", 0], ["分布式系统", 1], ["日语二外", 2],
+  ["数据库前沿", 3], ["马克思主义", 4], ["深度学习", 5],
+  ["工程伦理", 6], ["数据库系统", 7], ["体育", 5],
 ];
 const normalized = (s: string): string =>
   s.trim().replace(/\s+/g, "").replace(/（/g, "(").replace(/）/g, ")");
 export function courseTheme(name: string) {
+  const match = NAMED_COLORS.find(([part]) => name.includes(part));
+  if (match) return PALETTE[match[1]];
   let h = 0;
   for (const ch of normalized(name)) h = (h * 31 + ch.charCodeAt(0)) | 0;
   return PALETTE[Math.abs(h) % PALETTE.length];

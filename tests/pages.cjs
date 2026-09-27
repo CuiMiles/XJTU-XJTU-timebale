@@ -207,3 +207,42 @@ test("today header uses Beijing date and disappears on other weeks; top gap excl
     Date.now = now;
   }
 });
+
+test("native week swiper keeps an empty seven-day grid and exposes the reserved import", async () => {
+  const now = Date.now;
+  let modal;
+  let destination = "";
+  Date.now = () => Date.parse("2026-09-14T00:30:00Z");
+  global.wx = {
+    getStorageSync: () => undefined,
+    showModal: async (options) => {
+      modal = options;
+      return { confirm: true };
+    },
+    navigateTo: ({ url }) => { destination = url; },
+  };
+  const p = instance("pages/home/home");
+  try {
+    p.onLoad();
+    p.refresh();
+    assert.equal(p.data.empty, true);
+    assert.equal(p.data.frames.length, 3);
+    assert.deepEqual(p.data.frames.map((f) => f.slot), ["previous", "current", "next"]);
+    assert.equal(p.data.frames[1].days.length, 7);
+    assert.equal(p.data.frames[1].rows.length, 11);
+    assert.ok(p.data.frames[1].nowTop > 0 && p.data.frames[1].nowTop < 96);
+    p.swipeChange({ detail: { current: 2 } });
+    assert.equal(p.data.week, 2);
+    assert.equal(p.data.swipeIndex, 1);
+    assert.equal(p.data.frames[1].isCurrentWeek, false);
+    p.swipeChange({ detail: { current: 0 } });
+    assert.equal(p.data.week, 1);
+    p.swipeChange({ detail: { current: 0 } });
+    assert.equal(p.data.week, 1);
+  } finally {
+    Date.now = now;
+  }
+  await p.import();
+  assert.match(modal.content, /教务系统一键导入正在预留/);
+  assert.equal(destination, "/pages/transfer/transfer");
+});
