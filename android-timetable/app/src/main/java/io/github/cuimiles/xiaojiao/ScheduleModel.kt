@@ -71,7 +71,6 @@ object ScheduleCodec {
             require(c.weekday in 1..7) { "星期无效" }
             require(validNumbers(c.sections, 11) && validNumbers(c.weeks, 18)) { "节次或周次无效" }
             require(c.room.length <= 200 && c.note.length <= 500 && c.className.length <= 100) { "课程文本过长" }
-            require(c.teachers.size <= 20 && c.teachers.all { it.length <= 100 }) { "教师列表无效" }
             require(c.color == null || PastelPalette.byId(c.color) != null) { "课程颜色无效" }
         }
         val byId = data.courses.associateBy { it.id }

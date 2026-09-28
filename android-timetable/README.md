@@ -6,7 +6,7 @@
 
 课表主页横向展示周一至周日，左右滑动切换周次，点击左上角周次可快速选周；短屏可纵向滚动。课程区域不显示网格线，仅在日期行下保留浅分隔线。时间列展示每节课的开始和结束时间。顶栏依次是刷新、回到本周、新建课程、调色盘和更多。默认使用浅蓝、浅绿、浅橙等柔和课程色；点画板图标选课后可在圆形色盘上拖动，实时预览并调节深浅与透明度，应用后同名课程一起更新。新建或编辑课程也可打开调色盘。右上角「更多」还支持导入小程序的 2026 秋季 JSON 课表，也可导出保留自定义颜色的安卓版备份（旧小程序暂不识别自定义色值）、检查更新、查看小红书主页并直接保存图片到系统相册。新建课程含体育课模板，可以修改星期、节次、周次、教师、教室、颜色、备注。点课程即可查看、编辑或删除。首次安装时课表为空，不导入个人数据。
 
-本机已生成的签名包在 `dist/xiaojiao-timetable-0.7.0.apk`；`dist/sha256.txt` 是校验值，`dist/version.json` 是更新检查接口的数据。安装包目录被 Git 忽略。发布下一版前先在 `app/build.gradle.kts` 增加 `versionCode` 和 `versionName`，再运行 `python3 tools/build_release.py`。脚本会用 `JAVA_HOME`、`ANDROID_HOME` 和 Gradle 构建、验签，随后更新 `dist/`。首次构建会在当前用户的 `~/.local/share/xiaojiao-timetable/` 创建私有签名密钥。**妥善备份该密钥与 `signing.json`**：后续更新必须使用同一签名。源码和安装包都不包含签名私钥。
+本机已生成的签名包在 `dist/xiaojiao-timetable-0.7.1.apk`；`dist/sha256.txt` 是校验值，`dist/version.json` 是更新检查接口的数据。安装包目录被 Git 忽略。发布下一版前先在 `app/build.gradle.kts` 增加 `versionCode` 和 `versionName`，再运行 `python3 tools/build_release.py`。脚本会用 `JAVA_HOME`、`ANDROID_HOME` 和 Gradle 构建、验签，随后更新 `dist/`。首次构建会在当前用户的 `~/.local/share/xiaojiao-timetable/` 创建私有签名密钥。**妥善备份该密钥与 `signing.json`**：后续更新必须使用同一签名。源码和安装包都不包含签名私钥。
 
 校园网安装页由 `tools/apk_server.py` 提供，默认端口 `8767`，提供版本化下载链接、HTTP 分段续传及只含版本号/安装包文件名/校验值的 `/version.json`。手机连接校园网后，可在浏览器手动打开 `http://10.184.17.163:8767/` 下载；也可从网盘获得同一个已签名 APK。App 内不展示也不允许修改 IP 或端口，只在用户打开时判断是否距上次检查已满七天；满七天才异步请求一次，退出后不运行定时后台任务。手动点击「检查更新」可随时查询，发现新版时右上角更多图标出现红点、菜单改为「有新版本」；点击「下载更新」后 App 会直接下载、校验 SHA-256、包名、版本号和签名，再交给 Android 系统安装。首次从 App 安装更新时，系统可能要求允许小交课表安装应用。`tools/xiaojiao-apk.service` 可作为用户级 systemd 服务常驻。固定校园网 IP 若改变，须同时修改 `UpdateChecker.kt` 和 `network_security_config.xml` 并发布新 APK；隐藏界面地址不等于能从 APK 或网络流量中保密该地址。
 

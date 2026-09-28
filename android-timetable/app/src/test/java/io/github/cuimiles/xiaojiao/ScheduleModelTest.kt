@@ -12,6 +12,11 @@ class ScheduleModelTest {
         assertEquals(1, ScheduleEngine.occurrences(data, 1).size)
         assertEquals(0, ScheduleEngine.occurrences(data, 9).size)
     }
+    @Test fun courseWithManyTeachersSurvivesSaveAndImport() {
+        val teachers = (1..25).map { "教师$it" } + "长期参与课程的教师".repeat(15)
+        val data = ScheduleCodec.decode(ScheduleCodec.encode(ScheduleData(courses = listOf(course.copy(teachers = teachers)))))
+        assertEquals(teachers, data.courses.single().teachers)
+    }
     @Test fun adjustedOccurrenceMovesAcrossWeeks() {
         val moved = Adjustment(course.id, "2026-09-16", false, "2026-09-23", listOf(5, 6), "新地点")
         val data = ScheduleData(courses = listOf(course), adjustments = listOf(moved))
