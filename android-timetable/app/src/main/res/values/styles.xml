@@ -1,0 +1,9 @@
+<resources>
+    <style name="Theme.Xiaojiao" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:statusBarColor">#FFFFFF</item>
+        <item name="android:navigationBarColor">#FFFFFF</item>
+        <item name="android:windowBackground">#FFFFFF</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style>
+</resources>

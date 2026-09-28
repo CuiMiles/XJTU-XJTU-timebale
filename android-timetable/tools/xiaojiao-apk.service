@@ -1,0 +1,14 @@
+[Unit]
+Description=Xiaojiao Timetable LAN APK download
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/CuiMinghao/projects/XJTU-timebale/android-timetable
+ExecStart=/usr/bin/python3 /home/CuiMinghao/projects/XJTU-timebale/android-timetable/tools/apk_server.py --host 0.0.0.0 --port 8767
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target
