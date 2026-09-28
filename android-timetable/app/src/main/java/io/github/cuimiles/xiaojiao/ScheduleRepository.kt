@@ -5,7 +5,11 @@ import java.io.File
 
 class ScheduleRepository(context: Context) {
     private val file = File(context.filesDir, "timetable-2026-fall.json")
-    fun load(): ScheduleData = if (file.exists()) ScheduleCodec.decode(file.readText(Charsets.UTF_8)) else ScheduleData()
+    fun load(): ScheduleData {
+        if (!file.exists()) return ScheduleData()
+        val data = ScheduleCodec.decode(file.readText(Charsets.UTF_8))
+        return data.copy(courses = PastelPalette.migrateLegacyDefaults(data.courses))
+    }
     fun save(data: ScheduleData) {
         val checked = ScheduleCodec.decode(ScheduleCodec.encode(data))
         val temp = File(file.parentFile, file.name + ".tmp")

@@ -24,7 +24,7 @@ class InstallerServerTest(unittest.TestCase):
         apk_server.ADMIN_PASSWORD_FILE = apk_server.DIST / "admin_password"
         apk_server.LOGO.write_bytes(b"png")
         cls.body = bytes(range(256)) * 1024
-        cls.filename = "xiaojiao-timetable-0.4.1.apk"
+        cls.filename = "xiaojiao-timetable-0.5.0.apk"
         (apk_server.DIST / cls.filename).write_bytes(cls.body)
         (apk_server.DIST / "xiaojiao-timetable.apk").write_bytes(cls.body)
         digest = hashlib.sha256(cls.body).hexdigest()
@@ -54,7 +54,8 @@ class InstallerServerTest(unittest.TestCase):
     def test_page_links_versioned_apk(self):
         status, _, body = self.request("/")
         self.assertEqual(status, 200)
-        self.assertIn(b'href="/xiaojiao-timetable-0.4.1.apk"', body)
+        self.assertIn(b'href="/xiaojiao-timetable-0.5.0.apk"', body)
+        self.assertIn("校园网".encode(), body)
 
     def test_admin_requires_credentials_and_shows_ip_counts(self):
         status, headers, body = self.request("/admin")

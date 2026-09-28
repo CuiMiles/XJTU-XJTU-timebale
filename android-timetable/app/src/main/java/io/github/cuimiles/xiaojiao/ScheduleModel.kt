@@ -6,6 +6,8 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
+import java.util.Locale
+import kotlin.math.pow
 
 @Serializable
 data class Course(
@@ -166,7 +168,21 @@ object ScheduleEngine {
 
 data class Pastel(val id: String, val label: String, val background: Long, val text: Long)
 object PastelPalette {
-    val all = listOf(
+    private val defaults = listOf(
+        Pastel("soft-sky", "", 0xFFD7E8F7, 0xFF334E68),
+        Pastel("soft-mint", "", 0xFFD9EFE5, 0xFF34584C),
+        Pastel("soft-apricot", "", 0xFFF6E5D3, 0xFF684D38),
+        Pastel("soft-lilac", "", 0xFFE8E1F4, 0xFF514765),
+        Pastel("soft-aqua", "", 0xFFD6EDF1, 0xFF365C64),
+        Pastel("soft-butter", "", 0xFFF4EDD2, 0xFF655735),
+        Pastel("soft-sage", "", 0xFFE4EDD8, 0xFF4B5A39),
+        Pastel("soft-periwinkle", "", 0xFFDDE5F7, 0xFF3D506B),
+        Pastel("soft-teal", "", 0xFFD9EEE9, 0xFF33594F),
+        Pastel("soft-cream", "", 0xFFF4E9DC, 0xFF65503B),
+        Pastel("soft-mist", "", 0xFFE3EAF2, 0xFF42576B),
+        Pastel("soft-olive", "", 0xFFE7ECD6, 0xFF505B38),
+    )
+    private val legacy = listOf(
         Pastel("rose", "玫瑰粉", 0xFFEFB3BD, 0xFF66394D),
         Pastel("blue", "晴空蓝", 0xFFB6CDED, 0xFF2F4F70),
         Pastel("mint", "薄荷绿", 0xFFC0E7C0, 0xFF36583B),
@@ -197,17 +213,46 @@ object PastelPalette {
         Pastel("iris", "浅鸢尾", 0xFFD7D4F0, 0xFF4F4772),
         Pastel("moss", "苔藓绿", 0xFFD9E5D0, 0xFF42583A),
     )
-    private val defaults = all.take(12)
-    fun byId(id: String?) = all.firstOrNull { it.id == id }
+    val all = defaults + legacy
+    private val customPattern = Regex("^#[0-9A-Fa-f]{8}$")
+    fun byId(id: String?): Pastel? {
+        if (id == null) return null
+        all.firstOrNull { it.id == id }?.let { return it }
+        if (!customPattern.matches(id)) return null
+        val argb = id.substring(1).toLong(16)
+        return Pastel(id, "", argb, readableText(argb))
+    }
 
-    fun resolve(courses: List<Course>): Map<String, Pastel> {
+    fun custom(argb: Long): String = String.format(Locale.ROOT, "#%08X", argb and 0xFFFFFFFFL)
+
+    private fun readableText(argb: Long): Long {
+        val alpha = ((argb ushr 24) and 0xFF).toInt()
+        fun blended(shift: Int): Int {
+            val channel = ((argb ushr shift) and 0xFF).toInt()
+            return (channel * alpha + 255 * (255 - alpha)) / 255
+        }
+        fun linear(channel: Int): Double {
+            val value = channel / 255.0
+            return if (value <= 0.04045) value / 12.92 else ((value + 0.055) / 1.055).pow(2.4)
+        }
+        val luminance = 0.2126 * linear(blended(16)) +
+            0.7152 * linear(blended(8)) + 0.0722 * linear(blended(0))
+        val darkLuminance = 0.2126 * linear(0x27) + 0.7152 * linear(0x34) + 0.0722 * linear(0x49)
+        val darkContrast = (luminance + 0.05) / (darkLuminance + 0.05)
+        val whiteContrast = 1.05 / (luminance + 0.05)
+        return if (darkContrast >= whiteContrast) 0xFF273449 else 0xFFFFFFFF
+    }
+
+    fun resolve(courses: List<Course>): Map<String, Pastel> = resolveWithDefaults(courses, defaults)
+
+    private fun resolveWithDefaults(courses: List<Course>, choices: List<Pastel>): Map<String, Pastel> {
         val byName = courses.mapNotNull { course -> byId(course.color)?.let { course.name to it } }.toMap().toMutableMap()
         val used = courses.mapNotNull { byId(it.color)?.id }.toMutableSet()
         var next = 0
         return courses.associate { course ->
             val shade = byId(course.color) ?: byName.getOrPut(course.name) {
-                val available = defaults.firstOrNull { it.id !in used }
-                val chosen = available ?: defaults[next % defaults.size]
+                val available = choices.firstOrNull { it.id !in used }
+                val chosen = available ?: choices[next % choices.size]
                 next++
                 used.add(chosen.id)
                 chosen
@@ -219,5 +264,18 @@ object PastelPalette {
     fun assignDefaults(courses: List<Course>): List<Course> {
         val assigned = resolve(courses)
         return courses.map { if (it.color == null) it.copy(color = assigned.getValue(it.id).id) else it }
+    }
+
+    fun migrateLegacyDefaults(courses: List<Course>): List<Course> {
+        val oldDefaults = legacy.take(defaults.size)
+        val predicted = resolveWithDefaults(courses.map {
+            if (it.id.startsWith("gmis-")) it.copy(color = null) else it
+        }, oldDefaults)
+        return courses.map { course ->
+            val index = oldDefaults.indexOfFirst { it.id == course.color }
+            if (course.id.startsWith("gmis-") && index >= 0 && predicted[course.id]?.id == course.color)
+                course.copy(color = defaults[index].id)
+            else course
+        }
     }
 }

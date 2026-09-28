@@ -119,7 +119,7 @@ img{{width:96px;height:96px;border-radius:20px}}h1{{font-size:24px;margin:14px 0
 a{{display:block;background:#527fb6;color:white;text-decoration:none;border-radius:12px;padding:14px;margin:22px 0;font-weight:600}}
 small{{word-break:break-all;color:#758196}}
 </style><main><img src="/logo.png" alt="小交课表"><h1>小交课表</h1>
-<p>安卓安装包 · 局域网下载</p><a href="/{html.escape(filename)}">下载 / 更新 App</a>
+<p>手机连接校园网后，可在浏览器手动打开本页下载。</p><a href="/{html.escape(filename)}">下载 / 更新 App</a>
 <small>SHA-256：{html.escape(digest)}<br>版本文件：{html.escape(filename)}</small></main></html>""".encode()
             mime = "text/html; charset=utf-8"
         else:

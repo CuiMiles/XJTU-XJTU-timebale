@@ -1,6 +1,8 @@
 package io.github.cuimiles.xiaojiao
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Build
@@ -49,6 +51,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
@@ -104,7 +107,8 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
     val pager = rememberPagerState(initialPage = initial, pageCount = { 18 })
 
     fun save(next: ScheduleData) {
-        val prepared = next.copy(courses = PastelPalette.assignDefaults(next.courses))
+        val migrated = PastelPalette.migrateLegacyDefaults(next.courses)
+        val prepared = next.copy(courses = PastelPalette.assignDefaults(migrated))
         runCatching { repository.save(prepared) }
             .onSuccess { data = prepared; error = null }
             .onFailure { error = it.message ?: "保存课表失败" }
@@ -133,14 +137,13 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
             ScheduleCodec.decode(bytes.toString(Charsets.UTF_8))
         }.onSuccess(::save).onFailure { error = "导入失败：${it.message}" }
     }
-    val saveProfile = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("image/jpeg")) { uri ->
-        if (uri != null) runCatching {
-            context.resources.openRawResource(R.raw.xiaohongshu_profile).use { source ->
-                context.contentResolver.openOutputStream(uri)?.use { destination -> source.copyTo(destination) }
-                    ?: error("无法写入图片")
-            }
-        }.onSuccess { Toast.makeText(context, "图片已保存", Toast.LENGTH_SHORT).show() }
-            .onFailure { error = "保存图片失败：${it.message}" }
+    fun saveProfileToGallery() {
+        runCatching { GallerySaver.saveProfile(context) }
+            .onSuccess { Toast.makeText(context, "已保存到相册", Toast.LENGTH_SHORT).show() }
+            .onFailure { error = "保存到相册失败：${it.message}" }
+    }
+    val galleryPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) saveProfileToGallery() else error = "请允许保存图片到相册"
     }
 
     LaunchedEffect(login) { onLoginVisible(login) }
@@ -195,11 +198,11 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
             } },
             confirmButton = { TextButton(onClick = { menu = false }) { Text("关闭") } },
         )
-        if (paletteOpen) AlertDialog(
-            onDismissRequest = { paletteOpen = false }, title = { Text("调色盘") },
-            text = {
-                val chosenCourse = data.courses.firstOrNull { it.name == paletteCourseName }
-                if (chosenCourse == null) {
+        if (paletteOpen) {
+            val chosenCourse = data.courses.firstOrNull { it.name == paletteCourseName }
+            if (chosenCourse == null) AlertDialog(
+                onDismissRequest = { paletteOpen = false }, title = { Text("调色盘") },
+                text = {
                     Column(Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
                         Text("选择课程", color = Muted, fontSize = 13.sp)
                         val colors = PastelPalette.resolve(data.courses)
@@ -212,38 +215,26 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
                                     .background(Color(colors.getValue(course.id).background)))
                                 Spacer(Modifier.width(10.dp))
                                 Text(course.name, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(colors.getValue(course.id).label, color = Muted, fontSize = 11.sp)
+                                Text("›", color = Muted, fontSize = 20.sp)
                             }
                         }
                         if (data.courses.isEmpty()) Text("新建或导入课程后即可调色", color = Muted)
                     }
-                } else {
-                    Column(Modifier.fillMaxWidth().heightIn(max = 425.dp).verticalScroll(rememberScrollState())) {
-                        Text("${chosenCourse.name} · 同名课程同步换色", color = Muted, fontSize = 12.sp)
-                        Spacer(Modifier.height(8.dp))
-                        val current = PastelPalette.resolve(data.courses).getValue(chosenCourse.id).id
-                        PastelPalette.all.chunked(4).forEach { row ->
-                            Row(Modifier.fillMaxWidth()) {
-                                row.forEach { shade ->
-                                    PaletteChoice(shade, shade.id == current,
-                                        onClick = {
-                                            save(data.copy(courses = data.courses.map {
-                                                if (it.name == chosenCourse.name) it.copy(color = shade.id) else it
-                                            }))
-                                            if (error == null) paletteOpen = false
-                                        }, modifier = Modifier.weight(1f))
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    if (paletteCourseName == null) paletteOpen = false else paletteCourseName = null
-                }) { Text(if (paletteCourseName == null) "关闭" else "返回课程") }
-            },
-        )
+                },
+                confirmButton = { TextButton(onClick = { paletteOpen = false }) { Text("关闭") } },
+            ) else ColorWheelDialog(
+                initialColor = PastelPalette.resolve(data.courses).getValue(chosenCourse.id).id,
+                courseName = chosenCourse.name,
+                room = chosenCourse.room,
+                onDismiss = { paletteCourseName = null },
+                onApply = { color ->
+                    save(data.copy(courses = data.courses.map {
+                        if (it.name == chosenCourse.name) it.copy(color = color) else it
+                    }))
+                    if (error == null) { paletteOpen = false; paletteCourseName = null }
+                },
+            )
+        }
         if (weekPicker) AlertDialog(
             onDismissRequest = { weekPicker = false },
             title = { Text("选择周次") },
@@ -288,15 +279,20 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
                 Spacer(Modifier.height(8.dp))
                 Text("有建议或反馈，欢迎来小红书交流。", color = Muted, fontSize = 12.sp)
             } },
-            confirmButton = { TextButton(onClick = { saveProfile.launch("小交课表-小红书主页.jpg") }) { Text("保存图片") } },
+            confirmButton = { TextButton(onClick = {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ||
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED)
+                    saveProfileToGallery()
+                else galleryPermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }) { Text("保存到相册") } },
             dismissButton = { TextButton(onClick = { about = false }) { Text("关闭") } },
         )
         if (installDialog) AlertDialog(
             onDismissRequest = { installDialog = false }, title = { Text("下载安装包") },
             text = { Column {
-                Text("手机与电脑连接同一局域网后，打开下方地址下载新版本。", fontSize = 13.sp, color = Muted)
+                Text("手机连接校园网后，在浏览器手动打开下方地址即可下载更新。", fontSize = 13.sp, color = Muted)
                 Spacer(Modifier.height(10.dp))
-                OutlinedTextField(value = installUrl, onValueChange = { installUrl = it }, label = { Text("局域网下载地址") }, singleLine = true)
+                OutlinedTextField(value = installUrl, onValueChange = { installUrl = it }, label = { Text("校园网下载地址") }, singleLine = true)
             } },
             confirmButton = { TextButton(onClick = {
                 val uri = Uri.parse(installUrl.trim())
@@ -305,8 +301,8 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
                     runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
                         .onFailure { error = "无法打开浏览器" }
                     installDialog = false
-                } else error = "请输入有效的 http:// 局域网地址"
-            }) { Text("打开") } },
+                } else error = "请输入有效的 http:// 校园网地址"
+            }) { Text("用浏览器打开") } },
             dismissButton = { TextButton(onClick = { installDialog = false }) { Text("取消") } },
         )
         if (editor) CourseEditor(initial = editing, onDismiss = { editor = false }, onSave = { course ->
@@ -505,14 +501,21 @@ private fun CourseEditor(initial: Course?, onDismiss: () -> Unit, onSave: (Cours
     var teacher by remember(initial?.id) { mutableStateOf(initial?.teachers?.joinToString("、").orEmpty()) }
     var room by remember(initial?.id) { mutableStateOf(initial?.room.orEmpty()) }
     var note by remember(initial?.id) { mutableStateOf(initial?.note.orEmpty()) }
-    var color by remember(initial?.id) { mutableStateOf(initial?.color ?: "mint") }
+    var color by remember(initial?.id) { mutableStateOf(initial?.color ?: "soft-mint") }
+    var pickerOpen by remember(initial?.id) { mutableStateOf(false) }
     var localError by remember { mutableStateOf("") }
-    AlertDialog(onDismissRequest = onDismiss,
+    if (pickerOpen) ColorWheelDialog(
+        initialColor = color,
+        courseName = name,
+        room = room,
+        onDismiss = { pickerOpen = false },
+        onApply = { color = it; pickerOpen = false },
+    ) else AlertDialog(onDismissRequest = onDismiss,
         title = { Text(if (initial == null) "新建课程" else "编辑课程") },
         text = { Column(Modifier.fillMaxWidth().heightIn(max = 490.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (initial == null) TextButton(onClick = {
-                name = "体育"; weekday = 3; sections = "3-4"; weeks = "1-8"; color = "mint"
+                name = "体育"; weekday = 3; sections = "3-4"; weeks = "1-8"; color = "soft-mint"
             }) { Text("使用体育课模板：周三 3–4 节，第 1–8 周") }
             OutlinedTextField(name, { name = it }, label = { Text("课程名 *") }, singleLine = true)
             Text("星期", fontSize = 12.sp, color = Muted)
@@ -526,13 +529,14 @@ private fun CourseEditor(initial: Course?, onDismiss: () -> Unit, onSave: (Cours
             OutlinedTextField(teacher, { teacher = it }, label = { Text("教师") }, singleLine = true)
             OutlinedTextField(room, { room = it }, label = { Text("教室") }, singleLine = true)
             OutlinedTextField(note, { note = it }, label = { Text("备注") }, maxLines = 3)
-            Text("颜色", fontSize = 12.sp, color = Muted)
-            PastelPalette.all.chunked(4).forEach { row ->
-                Row(Modifier.fillMaxWidth()) {
-                    row.forEach { shade ->
-                        PaletteChoice(shade, color == shade.id, onClick = { color = shade.id },
-                            modifier = Modifier.weight(1f))
-                    }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("颜色", fontSize = 12.sp, color = Muted)
+                TextButton(onClick = { pickerOpen = true }) {
+                    Box(Modifier.size(25.dp).clip(CircleShape)
+                        .background(Color(PastelPalette.byId(color)!!.background)))
+                    Spacer(Modifier.width(8.dp))
+                    Text("调色盘")
                 }
             }
             if (localError.isNotBlank()) Text(localError, color = Color(0xFFB45252), fontSize = 12.sp)
@@ -554,17 +558,4 @@ private fun CourseEditor(initial: Course?, onDismiss: () -> Unit, onSave: (Cours
         }) { Text("保存") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
     )
-}
-
-@Composable
-private fun PaletteChoice(shade: Pastel, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Column(modifier.clip(RoundedCornerShape(9.dp)).clickable(onClick = onClick).padding(vertical = 5.dp),
-        horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(34.dp).clip(CircleShape).background(Color(shade.background)),
-            contentAlignment = Alignment.Center) {
-            if (selected) Text("✓", color = Color(shade.text), fontSize = 19.sp, fontWeight = FontWeight.Bold)
-        }
-        Text(shade.label, color = if (selected) Ink else Muted, fontSize = 10.sp,
-            maxLines = 1, overflow = TextOverflow.Ellipsis)
-    }
 }

@@ -30,7 +30,31 @@ class ScheduleModelTest {
         val assigned = PastelPalette.assignDefaults(courses)
         assertEquals(10, assigned.take(10).map { it.color }.toSet().size)
         assertEquals(assigned.first().color, assigned.last().color)
-        assertEquals(29, PastelPalette.all.size)
+        assertEquals("soft-sky", assigned.first().color)
+        assertTrue(assigned.take(10).all { item ->
+            val background = PastelPalette.byId(item.color)!!.background
+            listOf(16, 8, 0).all { shift -> ((background ushr shift) and 0xFF) >= 0xD0 }
+        })
         assertEquals("mint", PastelPalette.assignDefaults(listOf(course)).single().color)
+    }
+    @Test fun customColorWithAlphaSurvivesBackupAndLegacyDefaultsBecomeSoft() {
+        val custom = PastelPalette.custom(0x80302060)
+        assertEquals("#80302060", custom)
+        assertEquals(0x80302060, PastelPalette.byId(custom)!!.background)
+        assertEquals(0xFFFFFFFF, PastelPalette.byId("#FF101040")!!.text)
+        assertEquals(0xFF273449, PastelPalette.byId("#40101040")!!.text)
+        val data = ScheduleCodec.decode(ScheduleCodec.encode(ScheduleData(courses = listOf(course.copy(color = custom)))))
+        assertEquals(custom, data.courses.single().color)
+        assertNull(PastelPalette.byId("#GG302060"))
+
+        val old = listOf(course,
+            course.copy(id = "gmis-one", name = "算法", color = "rose"),
+            course.copy(id = "gmis-two", name = "数据库", color = "blue"),
+            course.copy(id = "gmis-custom", name = "机器学习", color = custom))
+        val migrated = PastelPalette.migrateLegacyDefaults(old)
+        assertEquals("mint", migrated[0].color)
+        assertEquals("soft-sky", migrated[1].color)
+        assertEquals("soft-mint", migrated[2].color)
+        assertEquals(custom, migrated[3].color)
     }
 }
