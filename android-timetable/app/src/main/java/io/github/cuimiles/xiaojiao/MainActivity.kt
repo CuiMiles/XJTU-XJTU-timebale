@@ -17,12 +17,16 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Today
@@ -52,7 +56,6 @@ import java.util.UUID
 
 private val Ink = Color(0xFF273449)
 private val Muted = Color(0xFF758196)
-private val Rule = Color(0xFFE7EBF0)
 private val TodayWash = Color(0xFFF2F7FF)
 private val Accent = Color(0xFF527FB6)
 private const val INSTALL_URL = "http://10.184.17.163:8767/"
@@ -82,6 +85,7 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
     var login by remember { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
+    var weekPicker by remember { mutableStateOf(false) }
     var about by remember { mutableStateOf(false) }
     var editor by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<Course?>(null) }
@@ -137,8 +141,9 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
                 Column(Modifier.fillMaxSize()) {
                     ScheduleToolbar(
                         week = pager.currentPage + 1,
+                        onWeekClick = { weekPicker = true },
                         onRefresh = { login = true },
-                        onToday = { scope.launch { pager.animateScrollToPage(initial) } },
+                        onToday = { scope.launch { pager.animateScrollToPage(CalendarRules.weekOf(CalendarRules.today()).coerceIn(1, 18) - 1) } },
                         onAdd = { editing = null; editor = true },
                         onMore = { menu = true },
                     )
@@ -172,6 +177,41 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
                 MenuRow("关于小交课表") { menu = false; about = true }
             } },
             confirmButton = { TextButton(onClick = { menu = false }) { Text("关闭") } },
+        )
+        if (weekPicker) AlertDialog(
+            onDismissRequest = { weekPicker = false },
+            title = { Text("选择周次") },
+            text = {
+                val currentWeek = CalendarRules.weekOf(CalendarRules.today())
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(3),
+                    modifier = Modifier.fillMaxWidth().height(342.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    items((1..18).toList()) { targetWeek ->
+                        val firstDay = CalendarRules.dateOf(targetWeek, 1)
+                        val selected = targetWeek == pager.currentPage + 1
+                        Column(
+                            modifier = Modifier.clip(RoundedCornerShape(9.dp))
+                                .background(if (selected) TodayWash else Color(0xFFF7F9FC))
+                                .clickable {
+                                    weekPicker = false
+                                    scope.launch { pager.animateScrollToPage(targetWeek - 1) }
+                                }.padding(vertical = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text("第 $targetWeek 周", fontSize = 14.sp,
+                                color = if (selected || targetWeek == currentWeek) Accent else Ink,
+                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)
+                            Text(if (targetWeek == currentWeek) "本周 · ${firstDay.monthValue}.${firstDay.dayOfMonth}"
+                                else "${firstDay.monthValue}.${firstDay.dayOfMonth}",
+                                fontSize = 10.sp, color = Muted)
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { weekPicker = false }) { Text("取消") } },
         )
         if (about) AlertDialog(
             onDismissRequest = { about = false }, title = { Text("小交课表") },
@@ -234,14 +274,20 @@ private fun MenuRow(label: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun ScheduleToolbar(week: Int, onRefresh: () -> Unit, onToday: () -> Unit, onAdd: () -> Unit, onMore: () -> Unit) {
+private fun ScheduleToolbar(week: Int, onWeekClick: () -> Unit, onRefresh: () -> Unit, onToday: () -> Unit, onAdd: () -> Unit, onMore: () -> Unit) {
     val start = CalendarRules.dateOf(week, 1)
     val end = start.plusDays(6)
-    val thisWeek = week == CalendarRules.weekOf(CalendarRules.today())
+    var today by remember { mutableStateOf(CalendarRules.today()) }
+    LaunchedEffect(Unit) { while (true) { today = CalendarRules.today(); delay(60_000) } }
+    val thisWeek = week == CalendarRules.weekOf(today)
     Row(modifier = Modifier.fillMaxWidth().height(54.dp).padding(start = 10.dp, end = 6.dp),
         verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Text("第 $week 周${if (thisWeek) " · 本周" else " · 非本周"}", color = Ink, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, maxLines = 1)
+        Column(Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).clickable(onClick = onWeekClick)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("第 $week 周${if (thisWeek) " · 周${CalendarRules.dayNames[today.dayOfWeek.value - 1]}" else " · 非本周"}",
+                    color = Ink, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, maxLines = 1)
+                Icon(Icons.Outlined.ExpandMore, "选择周次", tint = Muted, modifier = Modifier.size(15.dp))
+            }
             Text("${start.year}.${start.monthValue}.${start.dayOfMonth}–${end.monthValue}.${end.dayOfMonth}", color = Muted, fontSize = 11.sp)
         }
         IconButton(onClick = onRefresh, modifier = Modifier.size(38.dp)) { Icon(Icons.Outlined.Refresh, "刷新课表", tint = Ink, modifier = Modifier.size(22.dp)) }
@@ -264,44 +310,42 @@ private fun WeekGrid(week: Int, data: ScheduleData, onCourse: (CourseBlock) -> U
         val headerHeight = 43.dp
         val rowHeight = maxOf(70.dp, (maxHeight - headerHeight) / 11)
         Column(Modifier.fillMaxSize()) {
-            Row(Modifier.fillMaxWidth().height(headerHeight).background(Color.White)) {
+            Row(Modifier.fillMaxWidth().height(headerHeight - 1.dp).background(Color.White)) {
                 Box(Modifier.width(timeWidth).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                    Text("${CalendarRules.dateOf(week, 1).monthValue}月", fontSize = 10.sp, color = Muted)
+                    Text("${CalendarRules.dateOf(week, 1).monthValue}月", fontSize = 12.sp, color = Muted)
                 }
                 (1..7).forEach { day ->
                     val date = CalendarRules.dateOf(week, day)
                     Column(Modifier.width(dayWidth).fillMaxHeight().background(if (day == todayColumn) TodayWash else Color.White),
                         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                        Text(CalendarRules.dayNames[day - 1], fontSize = 11.sp, color = if (day == todayColumn) Accent else Muted)
-                        Text("${date.dayOfMonth}", fontSize = 15.sp, color = if (day == todayColumn) Accent else Ink,
+                        Text(CalendarRules.dayNames[day - 1], fontSize = 10.sp, lineHeight = 12.sp,
+                            color = if (day == todayColumn) Accent else Muted)
+                        Spacer(Modifier.height(1.dp))
+                        Text("${date.dayOfMonth}", fontSize = 12.sp, lineHeight = 14.sp,
+                            color = if (day == todayColumn) Accent else Ink,
                             fontWeight = if (day == todayColumn) FontWeight.Bold else FontWeight.Medium)
                     }
                 }
             }
+            HorizontalDivider(thickness = 1.dp, color = Color(0xFFE9EDF2))
             val scroll = rememberScrollState()
             Box(Modifier.fillMaxSize().verticalScroll(scroll)) {
                 Box(Modifier.fillMaxWidth().height(rowHeight * 11)) {
                     Canvas(Modifier.fillMaxSize()) {
                         val timePx = timeWidth.toPx()
                         val dayPx = dayWidth.toPx()
-                        val rowPx = rowHeight.toPx()
                         if (todayColumn > 0) {
                             drawRect(TodayWash, topLeft = Offset(timePx + (todayColumn - 1) * dayPx, 0f),
                                 size = Size(dayPx, size.height))
                         }
-                        for (i in 0..11) drawLine(Rule, Offset(0f, i * rowPx),
-                            Offset(size.width, i * rowPx), 0.6.dp.toPx())
-                        for (i in 0..7) {
-                            val x = timePx + i * dayPx
-                            drawLine(Rule, Offset(x, 0f), Offset(x, size.height), 0.5.dp.toPx())
-                        }
                     }
                     (1..11).forEach { section ->
-                        val time = CalendarRules.slots(CalendarRules.dateOf(week, 1))[section - 1].substringBefore('-')
+                        val slot = CalendarRules.slots(if (todayColumn > 0) today else CalendarRules.dateOf(week, 1))[section - 1]
                         Column(Modifier.offset(y = rowHeight * (section - 1)).width(timeWidth).height(rowHeight).padding(top = 6.dp),
                             horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("$section", fontSize = 12.sp, color = Ink, fontWeight = FontWeight.Medium)
-                            Text(time, fontSize = 8.sp, color = Muted)
+                            Text(slot.substringBefore('-'), fontSize = 8.sp, lineHeight = 10.sp, color = Muted)
+                            Text(slot.substringAfter('-'), fontSize = 8.sp, lineHeight = 10.sp, color = Muted)
                         }
                     }
                     blocks.forEach { block ->
