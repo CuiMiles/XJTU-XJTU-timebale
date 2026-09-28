@@ -164,14 +164,60 @@ object ScheduleEngine {
     }
 }
 
-data class Pastel(val id: String, val background: Long, val text: Long)
+data class Pastel(val id: String, val label: String, val background: Long, val text: Long)
 object PastelPalette {
     val all = listOf(
-        Pastel("rose", 0xFFF6DCE5, 0xFF613A4B), Pastel("blue", 0xFFDAE8F8, 0xFF334C69),
-        Pastel("mint", 0xFFD9EFE6, 0xFF345B4C), Pastel("peach", 0xFFF7E1D5, 0xFF6B493D),
-        Pastel("lavender", 0xFFE8E2F7, 0xFF53476B), Pastel("cyan", 0xFFDCEFF1, 0xFF355B61),
-        Pastel("sand", 0xFFF5ECCF, 0xFF66583E), Pastel("slate", 0xFFE3EAF2, 0xFF425367),
+        Pastel("rose", "玫瑰粉", 0xFFEFB3BD, 0xFF66394D),
+        Pastel("blue", "晴空蓝", 0xFFB6CDED, 0xFF2F4F70),
+        Pastel("mint", "薄荷绿", 0xFFC0E7C0, 0xFF36583B),
+        Pastel("peach", "杏桃橙", 0xFFF2D4B5, 0xFF704632),
+        Pastel("lavender", "薰衣紫", 0xFFD8BCEB, 0xFF55436E),
+        Pastel("cyan", "湖水青", 0xFFB8EAEA, 0xFF2B5961),
+        Pastel("sand", "麦穗黄", 0xFFF4EFB9, 0xFF665327),
+        Pastel("stone", "岩石灰", 0xFFD2C3BC, 0xFF554E48),
+        Pastel("indigo", "暮色蓝", 0xFF9C9CDE, 0xFF29295E),
+        Pastel("magenta", "莓果紫", 0xFFDE9CDE, 0xFF5A2C5A),
+        Pastel("leaf", "草叶绿", 0xFF9CDE9C, 0xFF2B5E2B),
+        Pastel("chartreuse", "青芽黄", 0xFFC8DE9C, 0xFF4B5E2C),
+        Pastel("slate", "雾霭灰", 0xFFDDE3EC, 0xFF40536A),
+        Pastel("coral", "珊瑚粉", 0xFFF5D2C8, 0xFF75463D),
+        Pastel("teal", "松石绿", 0xFFCFE7DF, 0xFF31594F),
+        Pastel("periwinkle", "鸢尾蓝", 0xFFD9DDF5, 0xFF434D77),
+        Pastel("olive", "嫩橄榄", 0xFFE8E9C9, 0xFF555C35),
+        Pastel("cherry", "樱花红", 0xFFEFCADB, 0xFF6D3B55),
+        Pastel("cobalt", "海盐蓝", 0xFFC6DBF4, 0xFF304D75),
+        Pastel("lime", "青柠绿", 0xFFDFEEC5, 0xFF4B5F34),
+        Pastel("tangerine", "蜜橘橙", 0xFFF7D5BE, 0xFF704729),
+        Pastel("orchid", "兰花紫", 0xFFEBD7F2, 0xFF624475),
+        Pastel("ice", "冰川青", 0xFFD9F0F3, 0xFF305A64),
+        Pastel("honey", "蜂蜜黄", 0xFFF6E2C4, 0xFF6C542E),
+        Pastel("steel", "雨雾蓝", 0xFFD1DEE9, 0xFF3B5265),
+        Pastel("watermelon", "西瓜粉", 0xFFF2D0D2, 0xFF713E47),
+        Pastel("seafoam", "海沫绿", 0xFFCDEADD, 0xFF31594C),
+        Pastel("iris", "浅鸢尾", 0xFFD7D4F0, 0xFF4F4772),
+        Pastel("moss", "苔藓绿", 0xFFD9E5D0, 0xFF42583A),
     )
+    private val defaults = all.take(12)
     fun byId(id: String?) = all.firstOrNull { it.id == id }
-    fun forCourse(course: Course): Pastel = byId(course.color) ?: all[(course.name.hashCode() and Int.MAX_VALUE) % all.size]
+
+    fun resolve(courses: List<Course>): Map<String, Pastel> {
+        val byName = courses.mapNotNull { course -> byId(course.color)?.let { course.name to it } }.toMap().toMutableMap()
+        val used = courses.mapNotNull { byId(it.color)?.id }.toMutableSet()
+        var next = 0
+        return courses.associate { course ->
+            val shade = byId(course.color) ?: byName.getOrPut(course.name) {
+                val available = defaults.firstOrNull { it.id !in used }
+                val chosen = available ?: defaults[next % defaults.size]
+                next++
+                used.add(chosen.id)
+                chosen
+            }
+            course.id to shade
+        }
+    }
+
+    fun assignDefaults(courses: List<Course>): List<Course> {
+        val assigned = resolve(courses)
+        return courses.map { if (it.color == null) it.copy(color = assigned.getValue(it.id).id) else it }
+    }
 }

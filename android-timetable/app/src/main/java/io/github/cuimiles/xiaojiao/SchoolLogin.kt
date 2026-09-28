@@ -218,7 +218,7 @@ fun SchoolLogin(
                 showWeb = true
                 message = "正在打开学校官方登录页…"
             }, enabled = account.isNotBlank() && password.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
-                Text("登录并在本机加密保存一年")
+                Text("登录（免重新登录）")
             }
             TextButton(onClick = {
                 activeCredentials = null

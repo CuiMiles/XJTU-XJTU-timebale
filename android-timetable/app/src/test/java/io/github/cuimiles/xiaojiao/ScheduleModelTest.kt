@@ -23,4 +23,14 @@ class ScheduleModelTest {
         assertEquals(0, CalendarRules.weekOf(LocalDate.parse("2026-09-13")))
         assertEquals(18, CalendarRules.weekOf(LocalDate.parse("2027-01-17")))
     }
+    @Test fun defaultColorsAreDistinctAndStayStableForSameCourse() {
+        val courses = (1..10).map { number ->
+            course.copy(id = "course-$number", name = "课程 $number", color = null)
+        } + course.copy(id = "second-session", name = "课程 1", color = null)
+        val assigned = PastelPalette.assignDefaults(courses)
+        assertEquals(10, assigned.take(10).map { it.color }.toSet().size)
+        assertEquals(assigned.first().color, assigned.last().color)
+        assertEquals(29, PastelPalette.all.size)
+        assertEquals("mint", PastelPalette.assignDefaults(listOf(course)).single().color)
+    }
 }
