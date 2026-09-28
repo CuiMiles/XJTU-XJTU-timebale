@@ -3,6 +3,7 @@
 import base64
 import hashlib
 import http.client
+import json
 import tempfile
 import threading
 import unittest
@@ -24,11 +25,14 @@ class InstallerServerTest(unittest.TestCase):
         apk_server.ADMIN_PASSWORD_FILE = apk_server.DIST / "admin_password"
         apk_server.LOGO.write_bytes(b"png")
         cls.body = bytes(range(256)) * 1024
-        cls.filename = "xiaojiao-timetable-0.5.0.apk"
+        cls.filename = "xiaojiao-timetable-0.6.0.apk"
         (apk_server.DIST / cls.filename).write_bytes(cls.body)
         (apk_server.DIST / "xiaojiao-timetable.apk").write_bytes(cls.body)
         digest = hashlib.sha256(cls.body).hexdigest()
         (apk_server.DIST / "sha256.txt").write_text("{}  {}\n".format(digest, cls.filename))
+        (apk_server.DIST / "version.json").write_text(json.dumps({
+            "versionCode": 7, "versionName": "0.6.0", "apk": cls.filename, "sha256": digest,
+        }))
         cls.server = apk_server.ThreadingHTTPServer(("127.0.0.1", 0), apk_server.Handler)
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.thread.start()
@@ -54,8 +58,19 @@ class InstallerServerTest(unittest.TestCase):
     def test_page_links_versioned_apk(self):
         status, _, body = self.request("/")
         self.assertEqual(status, 200)
-        self.assertIn(b'href="/xiaojiao-timetable-0.5.0.apk"', body)
+        self.assertIn(b'href="/xiaojiao-timetable-0.6.0.apk"', body)
         self.assertIn("校园网".encode(), body)
+
+    def test_version_endpoint_matches_published_apk(self):
+        status, headers, body = self.request("/version.json")
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["Content-Type"], "application/json; charset=utf-8")
+        self.assertEqual(headers["Cache-Control"], "no-store")
+        metadata = json.loads(body)
+        self.assertEqual(metadata["versionCode"], 7)
+        self.assertEqual(metadata["versionName"], "0.6.0")
+        self.assertEqual(metadata["apk"], self.filename)
+        self.assertEqual(metadata["sha256"], hashlib.sha256(self.body).hexdigest())
 
     def test_admin_requires_credentials_and_shows_ip_counts(self):
         status, headers, body = self.request("/admin")

@@ -77,7 +77,9 @@ def main() -> None:
     apk = ROOT / "app/build/outputs/apk/release/app-release.apk"
     apksigner = sdk / "build-tools/35.0.0/apksigner"
     subprocess.run([str(apksigner), "verify", "--verbose", str(apk)], env=env, check=True)
-    version = re.search(r'versionName\s*=\s*"([^"]+)"', (ROOT / "app/build.gradle.kts").read_text()).group(1)
+    gradle_config = (ROOT / "app/build.gradle.kts").read_text()
+    version = re.search(r'versionName\s*=\s*"([^"]+)"', gradle_config).group(1)
+    version_code = int(re.search(r'versionCode\s*=\s*(\d+)', gradle_config).group(1))
     dist = ROOT / "dist"
     dist.mkdir(exist_ok=True)
     target = dist / f"xiaojiao-timetable-{version}.apk"
@@ -89,6 +91,14 @@ def main() -> None:
     digest_pending = dist / "sha256.txt.tmp"
     digest_pending.write_text(f"{digest}  {target.name}\n")
     os.replace(str(digest_pending), str(dist / "sha256.txt"))
+    version_pending = dist / "version.json.tmp"
+    version_pending.write_text(json.dumps({
+        "versionCode": version_code,
+        "versionName": version,
+        "apk": target.name,
+        "sha256": digest,
+    }, ensure_ascii=False) + "\n")
+    os.replace(str(version_pending), str(dist / "version.json"))
     print(f"Signed APK: {target}\nSHA-256: {digest}")
 
 

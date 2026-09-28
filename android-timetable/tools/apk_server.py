@@ -126,6 +126,7 @@ small{{word-break:break-all;color:#758196}}
             allowed = {
                 "/xiaojiao-timetable.apk": DIST / "xiaojiao-timetable.apk",
                 "/sha256.txt": DIST / "sha256.txt",
+                "/version.json": DIST / "version.json",
                 "/logo.png": LOGO,
             }
             digest_file = DIST / "sha256.txt"
@@ -138,7 +139,8 @@ small{{word-break:break-all;color:#758196}}
                 return
             body = file.read_bytes()
             mime = "application/vnd.android.package-archive" if path.endswith(".apk") else (
-                "image/png" if path.endswith(".png") else "text/plain; charset=utf-8")
+                "image/png" if path.endswith(".png") else (
+                    "application/json; charset=utf-8" if path.endswith(".json") else "text/plain; charset=utf-8"))
         status = 200
         total = len(body)
         content_range = None

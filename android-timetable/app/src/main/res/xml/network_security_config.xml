@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- The installer address is user-editable because the campus LAN IP can change. -->
+    <base-config cleartextTrafficPermitted="true" />
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">xjtu.edu.cn</domain>
+    </domain-config>
+</network-security-config>

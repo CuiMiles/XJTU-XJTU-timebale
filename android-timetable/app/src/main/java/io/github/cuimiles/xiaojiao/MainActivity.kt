@@ -31,6 +31,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.MoreHoriz
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Today
 import androidx.compose.material3.*
@@ -52,8 +53,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.pm.PackageInfoCompat
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.time.LocalTime
 import java.time.ZoneId
@@ -99,9 +103,20 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
     var editing by remember { mutableStateOf<Course?>(null) }
     var selected by remember { mutableStateOf<CourseBlock?>(null) }
     var deleteCandidate by remember { mutableStateOf<Course?>(null) }
-    var installDialog by remember { mutableStateOf(false) }
+    var updateDialog by remember { mutableStateOf(false) }
     val preferences = remember { context.getSharedPreferences("settings", 0) }
     var installUrl by remember { mutableStateOf(preferences.getString("install_url", INSTALL_URL).orEmpty()) }
+    val installedPackage = remember { context.packageManager.getPackageInfo(context.packageName, 0) }
+    val installedVersionCode = remember { PackageInfoCompat.getLongVersionCode(installedPackage).toInt() }
+    val installedVersionName = remember { installedPackage.versionName.orEmpty() }
+    var availableVersion by remember {
+        val code = preferences.getInt("available_version_code", 0)
+        mutableStateOf(if (code > installedVersionCode &&
+            preferences.getString("available_version_source", null) == installUrl.trim())
+            ReleaseInfo(code, preferences.getString("available_version_name", "").orEmpty()) else null)
+    }
+    var updateChecking by remember { mutableStateOf(false) }
+    var updateStatus by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val initial = CalendarRules.weekOf(CalendarRules.today()).coerceIn(1, 18) - 1
     val pager = rememberPagerState(initialPage = initial, pageCount = { 18 })
@@ -146,7 +161,58 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
         if (granted) saveProfileToGallery() else error = "请允许保存图片到相册"
     }
 
+    fun checkUpdates(manual: Boolean) {
+        if (updateChecking) return
+        val address = installUrl.trim()
+        val endpoint = runCatching { UpdateChecker.endpoint(address) }.getOrElse {
+            if (manual) updateStatus = "校园网下载地址无效，请检查后重试。"
+            return
+        }
+        val now = System.currentTimeMillis()
+        if (!manual && !UpdatePolicy.shouldAutoCheck(
+                preferences.getLong("update_last_attempt", 0),
+                preferences.getString("update_last_source", null), address, now)) return
+        preferences.edit().putString("install_url", address)
+            .putLong("update_last_attempt", now).putString("update_last_source", address).apply()
+        updateChecking = true
+        updateStatus = "正在检查新版本…"
+        scope.launch {
+            try {
+                val release = withContext(Dispatchers.IO) { UpdateChecker.fetch(endpoint) }
+                if (installUrl.trim() == address) {
+                    if (UpdatePolicy.isNewer(release, installedVersionCode)) {
+                        availableVersion = release
+                        preferences.edit().putInt("available_version_code", release.versionCode)
+                            .putString("available_version_name", release.versionName)
+                            .putString("available_version_source", address).apply()
+                        updateStatus = "发现新版本 ${release.versionName}（当前 $installedVersionName）"
+                    } else {
+                        availableVersion = null
+                        preferences.edit().remove("available_version_code").remove("available_version_name")
+                            .remove("available_version_source").apply()
+                        updateStatus = "当前已是最新版（$installedVersionName）"
+                    }
+                }
+            } catch (_: Exception) {
+                if (installUrl.trim() == address) updateStatus = "检查失败，请确认已连接校园网并核对下载地址。"
+            } finally {
+                updateChecking = false
+            }
+        }
+    }
+
+    fun closeUpdateDialog() {
+        updateDialog = false
+        installUrl = preferences.getString("install_url", INSTALL_URL).orEmpty()
+        val savedCode = preferences.getInt("available_version_code", 0)
+        availableVersion = if (savedCode > installedVersionCode &&
+            preferences.getString("available_version_source", null) == installUrl.trim())
+            ReleaseInfo(savedCode, preferences.getString("available_version_name", "").orEmpty()) else null
+        updateStatus = ""
+    }
+
     LaunchedEffect(login) { onLoginVisible(login) }
+    LaunchedEffect(Unit) { checkUpdates(manual = false) }
     DisposableEffect(Unit) { onDispose { onLoginVisible(false) } }
     MaterialTheme(colorScheme = lightColorScheme(primary = Accent, onSurface = Ink, surface = Color.White, background = Color.White)) {
         Surface(color = Color.White, modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
@@ -163,7 +229,9 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
                         onRefresh = { login = true },
                         onToday = { scope.launch { pager.animateScrollToPage(CalendarRules.weekOf(CalendarRules.today()).coerceIn(1, 18) - 1) } },
                         onAdd = { editing = null; editor = true },
+                        onPalette = { paletteCourseName = null; paletteOpen = true },
                         onMore = { menu = true },
+                        hasUpdate = availableVersion != null,
                     )
                     Box(Modifier.fillMaxSize()) {
                         HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
@@ -189,10 +257,13 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
         if (menu) AlertDialog(
             onDismissRequest = { menu = false }, title = { Text("更多") },
             text = { Column {
-                MenuRow("调色盘") { menu = false; paletteCourseName = null; paletteOpen = true }
                 MenuRow("导出课表") { menu = false; export.launch("小交课表-2026秋.json") }
                 MenuRow("导入课表") { menu = false; import.launch(arrayOf("application/json", "text/plain")) }
-                MenuRow("下载 / 更新安装包") { menu = false; installDialog = true }
+                MenuRow(if (availableVersion != null) "有新版本" else "检查更新") {
+                    menu = false
+                    updateDialog = true
+                    if (availableVersion == null) checkUpdates(manual = true)
+                }
                 MenuRow("清除已存登录信息") { credentialVault.clear(); menu = false }
                 MenuRow("关于小交课表") { menu = false; about = true }
             } },
@@ -287,23 +358,37 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
             }) { Text("保存到相册") } },
             dismissButton = { TextButton(onClick = { about = false }) { Text("关闭") } },
         )
-        if (installDialog) AlertDialog(
-            onDismissRequest = { installDialog = false }, title = { Text("下载安装包") },
+        if (updateDialog) AlertDialog(
+            onDismissRequest = ::closeUpdateDialog,
+            title = { Text(if (availableVersion != null) "有新版本" else "检查更新") },
             text = { Column {
-                Text("手机连接校园网后，在浏览器手动打开下方地址即可下载更新。", fontSize = 13.sp, color = Muted)
+                Text(if (updateChecking) "正在检查新版本…" else if (availableVersion != null)
+                    "发现新版本 ${availableVersion?.versionName}（当前 $installedVersionName）"
+                    else updateStatus.ifBlank { "当前版本 $installedVersionName" }, fontSize = 13.sp, color = Ink)
+                Spacer(Modifier.height(7.dp))
+                Text("手机连接校园网后，可直接下载安装。", fontSize = 12.sp, color = Muted)
                 Spacer(Modifier.height(10.dp))
-                OutlinedTextField(value = installUrl, onValueChange = { installUrl = it }, label = { Text("校园网下载地址") }, singleLine = true)
+                OutlinedTextField(value = installUrl, onValueChange = { value ->
+                    installUrl = value
+                    updateStatus = ""
+                    val savedCode = preferences.getInt("available_version_code", 0)
+                    availableVersion = if (savedCode > installedVersionCode &&
+                        preferences.getString("available_version_source", null) == value.trim())
+                        ReleaseInfo(savedCode, preferences.getString("available_version_name", "").orEmpty()) else null
+                }, label = { Text("校园网下载地址") }, singleLine = true)
+                TextButton(onClick = { checkUpdates(manual = true) }, enabled = !updateChecking,
+                    modifier = Modifier.align(Alignment.End)) { Text("重新检查") }
             } },
             confirmButton = { TextButton(onClick = {
                 val uri = Uri.parse(installUrl.trim())
-                if (uri.scheme == "http" && uri.host != null) {
+                if (runCatching { UpdateChecker.endpoint(installUrl) }.isSuccess) {
                     preferences.edit().putString("install_url", installUrl.trim()).apply()
                     runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
-                        .onFailure { error = "无法打开浏览器" }
-                    installDialog = false
-                } else error = "请输入有效的 http:// 校园网地址"
-            }) { Text("用浏览器打开") } },
-            dismissButton = { TextButton(onClick = { installDialog = false }) { Text("取消") } },
+                        .onSuccess { closeUpdateDialog() }
+                        .onFailure { updateStatus = "无法打开浏览器，请手动输入校园网地址。" }
+                } else updateStatus = "校园网下载地址无效，请检查后重试。"
+            }) { Text(if (availableVersion != null) "下载更新" else "打开下载页") } },
+            dismissButton = { TextButton(onClick = ::closeUpdateDialog) { Text("关闭") } },
         )
         if (editor) CourseEditor(initial = editing, onDismiss = { editor = false }, onSave = { course ->
             save(data.copy(courses = data.courses.filterNot { it.id == course.id } + course))
@@ -338,7 +423,9 @@ private fun MenuRow(label: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun ScheduleToolbar(week: Int, onWeekClick: () -> Unit, onRefresh: () -> Unit, onToday: () -> Unit, onAdd: () -> Unit, onMore: () -> Unit) {
+private fun ScheduleToolbar(week: Int, onWeekClick: () -> Unit, onRefresh: () -> Unit,
+    onToday: () -> Unit, onAdd: () -> Unit, onPalette: () -> Unit,
+    onMore: () -> Unit, hasUpdate: Boolean) {
     val start = CalendarRules.dateOf(week, 1)
     val end = start.plusDays(6)
     var today by remember { mutableStateOf(CalendarRules.today()) }
@@ -357,7 +444,14 @@ private fun ScheduleToolbar(week: Int, onWeekClick: () -> Unit, onRefresh: () ->
         IconButton(onClick = onRefresh, modifier = Modifier.size(38.dp)) { Icon(Icons.Outlined.Refresh, "刷新课表", tint = Ink, modifier = Modifier.size(22.dp)) }
         IconButton(onClick = onToday, modifier = Modifier.size(38.dp)) { Icon(Icons.Outlined.Today, "回到本周", tint = Ink, modifier = Modifier.size(22.dp)) }
         IconButton(onClick = onAdd, modifier = Modifier.size(38.dp)) { Icon(Icons.Outlined.Add, "新建课程", tint = Ink, modifier = Modifier.size(24.dp)) }
-        IconButton(onClick = onMore, modifier = Modifier.size(38.dp)) { Icon(Icons.Outlined.MoreHoriz, "更多", tint = Ink, modifier = Modifier.size(24.dp)) }
+        IconButton(onClick = onPalette, modifier = Modifier.size(38.dp)) { Icon(Icons.Outlined.Palette, "调色盘", tint = Ink, modifier = Modifier.size(23.dp)) }
+        Box(Modifier.size(38.dp)) {
+            IconButton(onClick = onMore, modifier = Modifier.fillMaxSize()) {
+                Icon(Icons.Outlined.MoreHoriz, "更多", tint = Ink, modifier = Modifier.size(24.dp))
+            }
+            if (hasUpdate) Box(Modifier.align(Alignment.TopEnd).offset(x = (-2).dp, y = 3.dp)
+                .size(8.dp).clip(CircleShape).background(Color(0xFFE46B6B)))
+        }
     }
 }
 
