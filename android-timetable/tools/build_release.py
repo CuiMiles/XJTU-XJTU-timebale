@@ -81,10 +81,14 @@ def main() -> None:
     dist = ROOT / "dist"
     dist.mkdir(exist_ok=True)
     target = dist / f"xiaojiao-timetable-{version}.apk"
-    shutil.copy2(apk, target)
-    shutil.copy2(apk, dist / "xiaojiao-timetable.apk")
+    for published in (target, dist / "xiaojiao-timetable.apk"):
+        pending = published.with_name(published.name + ".tmp")
+        shutil.copy2(apk, pending)
+        os.replace(str(pending), str(published))
     digest = hashlib.sha256(target.read_bytes()).hexdigest()
-    (dist / "sha256.txt").write_text(f"{digest}  {target.name}\n")
+    digest_pending = dist / "sha256.txt.tmp"
+    digest_pending.write_text(f"{digest}  {target.name}\n")
+    os.replace(str(digest_pending), str(dist / "sha256.txt"))
     print(f"Signed APK: {target}\nSHA-256: {digest}")
 
 

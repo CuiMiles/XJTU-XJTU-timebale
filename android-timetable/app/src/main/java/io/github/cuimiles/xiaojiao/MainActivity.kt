@@ -81,6 +81,7 @@ class MainActivity : ComponentActivity() {
 private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
     val context = LocalContext.current
     val repository = remember { ScheduleRepository(context) }
+    val credentialVault = remember { CredentialVault(context) }
     var data by remember { mutableStateOf(runCatching { repository.load() }.getOrDefault(ScheduleData())) }
     var error by remember { mutableStateOf<String?>(null) }
     var login by remember { mutableStateOf(false) }
@@ -133,7 +134,7 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
     MaterialTheme(colorScheme = lightColorScheme(primary = Accent, onSurface = Ink, surface = Color.White, background = Color.White)) {
         Surface(color = Color.White, modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
             if (login) {
-                SchoolLogin(onImported = { courses ->
+                SchoolLogin(credentialVault = credentialVault, onError = { error = it }, onImported = { courses ->
                     save(repository.mergeRemote(data, courses))
                     if (error == null) login = false
                 }, onClose = { login = false })
@@ -174,6 +175,7 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
                 MenuRow("导出课表") { menu = false; export.launch("小交课表-2026秋.json") }
                 MenuRow("导入课表") { menu = false; import.launch(arrayOf("application/json", "text/plain")) }
                 MenuRow("下载 / 更新安装包") { menu = false; installDialog = true }
+                MenuRow("清除已存登录信息") { credentialVault.clear(); menu = false }
                 MenuRow("关于小交课表") { menu = false; about = true }
             } },
             confirmButton = { TextButton(onClick = { menu = false }) { Text("关闭") } },
