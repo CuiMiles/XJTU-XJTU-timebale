@@ -1,8 +1,10 @@
-"""Small persistent counter for successfully sent APK downloads."""
+"""Persistent counts for APK transfers and first opens, without hardware IDs."""
 
+import hashlib
 import os
 import sqlite3
 import time
+import uuid
 from pathlib import Path
 
 
@@ -25,6 +27,11 @@ class DownloadStats:
             ip TEXT NOT NULL, filename TEXT NOT NULL, counted_at INTEGER NOT NULL,
             PRIMARY KEY (ip, filename)
         )""")
+        db.execute("""CREATE TABLE IF NOT EXISTS activations (
+            id_hash TEXT PRIMARY KEY, ip TEXT NOT NULL,
+            version_code INTEGER NOT NULL, first_at INTEGER NOT NULL
+        )""")
+        db.execute("CREATE INDEX IF NOT EXISTS activations_by_ip ON activations (ip)")
         return db
 
     def record(self, ip, filename, now=None):
@@ -60,5 +67,36 @@ class DownloadStats:
                 ORDER BY count DESC, last_at DESC LIMIT ? OFFSET ?""",
                 (per_page, (page - 1) * per_page)).fetchall()
             return count, total, rows
+        finally:
+            db.close()
+
+    def record_activation(self, install_id, ip, version_code, now=None):
+        """Count a random installation UUID once; keep only its hash."""
+        parsed = uuid.UUID(install_id)
+        if parsed.version != 4 or str(parsed) != install_id:
+            raise ValueError("invalid installation ID")
+        if type(version_code) is not int or not 1 <= version_code <= 1_000_000:
+            raise ValueError("invalid version code")
+        now = int(time.time() if now is None else now)
+        id_hash = hashlib.sha256(parsed.bytes).hexdigest()
+        db = self._connect()
+        try:
+            cursor = db.execute("""INSERT OR IGNORE INTO activations
+                (id_hash, ip, version_code, first_at) VALUES (?, ?, ?, ?)""",
+                (id_hash, ip, version_code, now))
+            db.commit()
+            return cursor.rowcount == 1
+        finally:
+            db.close()
+
+    def activation_overview(self, page=1, per_page=100):
+        db = self._connect()
+        try:
+            total, unique_ips = db.execute(
+                "SELECT COUNT(*), COUNT(DISTINCT ip) FROM activations").fetchone()
+            rows = db.execute("""SELECT ip, COUNT(*), MIN(first_at), MAX(first_at)
+                FROM activations GROUP BY ip ORDER BY COUNT(*) DESC, MAX(first_at) DESC
+                LIMIT ? OFFSET ?""", (per_page, (page - 1) * per_page)).fetchall()
+            return total, unique_ips, rows
         finally:
             db.close()

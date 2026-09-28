@@ -19,21 +19,25 @@ class UpdateCheckerTest {
     }
 
     @Test fun versionComparisonUsesCodeRatherThanDisplayName() {
-        val release = UpdateChecker.parse("""{"versionCode":7,"versionName":"0.6.0"}""")
-        assertEquals(7, release.versionCode)
-        assertEquals("0.6.0", release.versionName)
-        assertTrue(UpdatePolicy.isNewer(release, 6))
-        assertFalse(UpdatePolicy.isNewer(release, 7))
+        val release = UpdateChecker.parse("""{"versionCode":8,"versionName":"0.7.0","apk":"xiaojiao-timetable-0.7.0.apk","sha256":"${"a".repeat(64)}"}""")
+        assertEquals(8, release.versionCode)
+        assertEquals("0.7.0", release.versionName)
+        assertTrue(UpdatePolicy.isNewer(release, 7))
         assertFalse(UpdatePolicy.isNewer(release, 8))
+        assertFalse(UpdatePolicy.isNewer(release, 9))
     }
 
-    @Test fun endpointUsesSameServerAndRejectsEmbeddedCredentials() {
+    @Test fun metadataCannotRedirectDownloadToAnotherPathOrHost() {
         assertEquals("http://10.184.17.163:8767/version.json",
-            UpdateChecker.endpoint("http://10.184.17.163:8767/download").toString())
-        assertThrows(IllegalArgumentException::class.java) {
-            UpdateChecker.endpoint("http://user:password@10.184.17.163:8767/")
+            UpdateChecker.endpoint().toString())
+        val digest = "a".repeat(64)
+        val good = UpdateChecker.parse("""{"versionCode":8,"versionName":"0.7.0","apk":"xiaojiao-timetable-0.7.0.apk","sha256":"$digest"}""")
+        assertEquals("http://10.184.17.163:8767/xiaojiao-timetable-0.7.0.apk",
+            UpdateChecker.apkUrl(good).toString())
+        for (bad in listOf("../../.env", "https://example.com/app.apk", "xiaojiao-timetable-0.6.0.apk")) {
+            assertThrows(IllegalArgumentException::class.java) {
+                UpdateChecker.parse("""{"versionCode":8,"versionName":"0.7.0","apk":"$bad","sha256":"$digest"}""")
+            }
         }
-        assertThrows(IllegalArgumentException::class.java) { UpdateChecker.endpoint("file:///tmp/version.json") }
-        assertThrows(IllegalArgumentException::class.java) { UpdateChecker.parse("""{"versionCode":0,"versionName":"0.6.0"}""") }
     }
 }

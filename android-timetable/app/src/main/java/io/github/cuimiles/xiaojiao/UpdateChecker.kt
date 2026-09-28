@@ -3,15 +3,20 @@ package io.github.cuimiles.xiaojiao
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.net.HttpURLConnection
-import java.net.URI
 import java.net.URL
-import java.util.Locale
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
-data class ReleaseInfo(val versionCode: Int, val versionName: String)
+internal const val CAMPUS_SERVER_URL = "http://10.184.17.163:8767"
+
+data class ReleaseInfo(
+    val versionCode: Int,
+    val versionName: String,
+    val apk: String,
+    val sha256: String,
+)
 
 object UpdatePolicy {
     const val AUTO_CHECK_INTERVAL_MS = 7L * 24 * 60 * 60 * 1000
@@ -25,28 +30,25 @@ object UpdatePolicy {
 }
 
 object UpdateChecker {
-    fun endpoint(installUrl: String): URL {
-        val uri = URI(installUrl.trim())
-        val scheme = uri.scheme?.lowercase(Locale.ROOT)
-        require(scheme == "http" || scheme == "https") { "地址必须以 http:// 或 https:// 开头" }
-        require(uri.host != null && uri.userInfo == null && uri.port in -1..65535 && uri.port != 0) {
-            "校园网下载地址无效"
-        }
-        return URI(scheme, null, uri.host, uri.port, "/version.json", null, null).toURL()
-    }
+    fun endpoint(): URL = URL("$CAMPUS_SERVER_URL/version.json")
+
+    fun apkUrl(release: ReleaseInfo): URL = URL("$CAMPUS_SERVER_URL/${release.apk}")
 
     fun parse(payload: String): ReleaseInfo {
         val data = Json.parseToJsonElement(payload).jsonObject
         val code = data["versionCode"]?.jsonPrimitive?.intOrNull
         val name = data["versionName"]?.jsonPrimitive?.content.orEmpty()
-        require(code != null && code > 0 && name.matches(Regex("[0-9A-Za-z][0-9A-Za-z.+_-]{0,31}"))) {
+        val apk = data["apk"]?.jsonPrimitive?.content.orEmpty()
+        val digest = data["sha256"]?.jsonPrimitive?.content.orEmpty()
+        require(code != null && code > 0 && name.matches(Regex("[0-9A-Za-z][0-9A-Za-z.+_-]{0,31}")) &&
+            apk == "xiaojiao-timetable-$name.apk" && digest.matches(Regex("[0-9a-f]{64}"))) {
             "版本信息无效"
         }
-        return ReleaseInfo(code, name)
+        return ReleaseInfo(code, name, apk, digest)
     }
 
-    fun fetch(endpoint: URL): ReleaseInfo {
-        val connection = (endpoint.openConnection() as HttpURLConnection).apply {
+    fun fetch(): ReleaseInfo {
+        val connection = (endpoint().openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = 2500
             readTimeout = 2500

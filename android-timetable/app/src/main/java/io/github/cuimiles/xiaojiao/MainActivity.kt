@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Build
+import android.provider.Settings
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -55,10 +56,12 @@ import androidx.core.view.WindowCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.pm.PackageInfoCompat
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.time.LocalTime
 import java.time.ZoneId
 import java.util.UUID
@@ -67,7 +70,6 @@ private val Ink = Color(0xFF273449)
 private val Muted = Color(0xFF758196)
 private val TodayWash = Color(0xFFF2F7FF)
 private val Accent = Color(0xFF527FB6)
-private const val INSTALL_URL = "http://10.184.17.163:8767/"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -105,18 +107,24 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
     var deleteCandidate by remember { mutableStateOf<Course?>(null) }
     var updateDialog by remember { mutableStateOf(false) }
     val preferences = remember { context.getSharedPreferences("settings", 0) }
-    var installUrl by remember { mutableStateOf(preferences.getString("install_url", INSTALL_URL).orEmpty()) }
     val installedPackage = remember { context.packageManager.getPackageInfo(context.packageName, 0) }
     val installedVersionCode = remember { PackageInfoCompat.getLongVersionCode(installedPackage).toInt() }
     val installedVersionName = remember { installedPackage.versionName.orEmpty() }
     var availableVersion by remember {
         val code = preferences.getInt("available_version_code", 0)
+        val name = preferences.getString("available_version_name", "").orEmpty()
+        val apk = preferences.getString("available_version_apk", "").orEmpty()
+        val digest = preferences.getString("available_version_sha256", "").orEmpty()
         mutableStateOf(if (code > installedVersionCode &&
-            preferences.getString("available_version_source", null) == installUrl.trim())
-            ReleaseInfo(code, preferences.getString("available_version_name", "").orEmpty()) else null)
+            preferences.getString("available_version_source", null) == CAMPUS_SERVER_URL &&
+            apk == "xiaojiao-timetable-$name.apk" && digest.matches(Regex("[0-9a-f]{64}")))
+            ReleaseInfo(code, name, apk, digest) else null)
     }
     var updateChecking by remember { mutableStateOf(false) }
+    var updateDownloading by remember { mutableStateOf(false) }
+    var updateProgress by remember { mutableIntStateOf(0) }
     var updateStatus by remember { mutableStateOf("") }
+    var pendingApk by remember { mutableStateOf<File?>(null) }
     val scope = rememberCoroutineScope()
     val initial = CalendarRules.weekOf(CalendarRules.today()).coerceIn(1, 18) - 1
     val pager = rememberPagerState(initialPage = initial, pageCount = { 18 })
@@ -160,59 +168,127 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
     val galleryPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) saveProfileToGallery() else error = "请允许保存图片到相册"
     }
+    val installPermission = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        val apk = pendingApk
+        if (apk != null && context.packageManager.canRequestPackageInstalls()) {
+            runCatching { UpdateDownloader.startInstaller(context, apk) }
+                .onFailure { updateStatus = "无法打开安装界面，请重试。" }
+        } else updateStatus = "请允许小交课表安装应用，然后点击“安装更新”。"
+    }
 
-    fun checkUpdates(manual: Boolean) {
-        if (updateChecking) return
-        val address = installUrl.trim()
-        val endpoint = runCatching { UpdateChecker.endpoint(address) }.getOrElse {
-            if (manual) updateStatus = "校园网下载地址无效，请检查后重试。"
+    fun saveAvailable(release: ReleaseInfo?) {
+        availableVersion = release
+        val edit = preferences.edit()
+        if (release == null) edit.remove("available_version_code").remove("available_version_name")
+            .remove("available_version_apk").remove("available_version_sha256")
+            .remove("available_version_source")
+        else edit.putInt("available_version_code", release.versionCode)
+            .putString("available_version_name", release.versionName)
+            .putString("available_version_apk", release.apk)
+            .putString("available_version_sha256", release.sha256)
+            .putString("available_version_source", CAMPUS_SERVER_URL)
+        edit.apply()
+    }
+
+    fun installDownloaded() {
+        val apk = pendingApk ?: return
+        if (!apk.isFile) {
+            pendingApk = null
+            updateStatus = "安装包已清理，请重新下载。"
             return
         }
+        if (context.packageManager.canRequestPackageInstalls()) {
+            runCatching { UpdateDownloader.startInstaller(context, apk) }
+                .onFailure { updateStatus = "无法打开安装界面，请重试。" }
+        } else runCatching {
+            installPermission.launch(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                Uri.parse("package:${context.packageName}")))
+        }.onFailure { updateStatus = "请在系统设置中允许小交课表安装应用。" }
+    }
+
+    fun checkUpdates(manual: Boolean) {
+        if (updateChecking || updateDownloading) return
         val now = System.currentTimeMillis()
         if (!manual && !UpdatePolicy.shouldAutoCheck(
                 preferences.getLong("update_last_attempt", 0),
-                preferences.getString("update_last_source", null), address, now)) return
-        preferences.edit().putString("install_url", address)
-            .putLong("update_last_attempt", now).putString("update_last_source", address).apply()
+                preferences.getString("update_last_source", null), CAMPUS_SERVER_URL, now)) return
+        preferences.edit().remove("install_url").putLong("update_last_attempt", now)
+            .putString("update_last_source", CAMPUS_SERVER_URL).apply()
         updateChecking = true
         updateStatus = "正在检查新版本…"
         scope.launch {
             try {
-                val release = withContext(Dispatchers.IO) { UpdateChecker.fetch(endpoint) }
-                if (installUrl.trim() == address) {
-                    if (UpdatePolicy.isNewer(release, installedVersionCode)) {
-                        availableVersion = release
-                        preferences.edit().putInt("available_version_code", release.versionCode)
-                            .putString("available_version_name", release.versionName)
-                            .putString("available_version_source", address).apply()
-                        updateStatus = "发现新版本 ${release.versionName}（当前 $installedVersionName）"
-                    } else {
-                        availableVersion = null
-                        preferences.edit().remove("available_version_code").remove("available_version_name")
-                            .remove("available_version_source").apply()
-                        updateStatus = "当前已是最新版（$installedVersionName）"
-                    }
+                val release = withContext(Dispatchers.IO) { UpdateChecker.fetch() }
+                if (UpdatePolicy.isNewer(release, installedVersionCode)) {
+                    if (availableVersion?.versionCode != release.versionCode) pendingApk = null
+                    saveAvailable(release)
+                    updateStatus = "发现新版本 ${release.versionName}（当前 $installedVersionName）"
+                } else {
+                    pendingApk = null
+                    saveAvailable(null)
+                    updateStatus = "当前已是最新版（$installedVersionName）"
                 }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (_: Exception) {
-                if (installUrl.trim() == address) updateStatus = "检查失败，请确认已连接校园网并核对下载地址。"
+                updateStatus = "检查失败，请确认已连接校园网。"
             } finally {
                 updateChecking = false
             }
         }
     }
 
+    fun downloadUpdate() {
+        if (updateDownloading || updateChecking) return
+        updateDownloading = true
+        updateProgress = 0
+        updateStatus = "正在下载更新…"
+        scope.launch {
+            try {
+                val release = withContext(Dispatchers.IO) { UpdateChecker.fetch() }
+                if (!UpdatePolicy.isNewer(release, installedVersionCode)) {
+                    pendingApk = null
+                    saveAvailable(null)
+                    updateStatus = "当前已是最新版（$installedVersionName）"
+                    return@launch
+                }
+                saveAvailable(release)
+                val apk = UpdateDownloader.download(context, release) { updateProgress = it }
+                pendingApk = apk
+                updateStatus = "下载完成，正在打开安装界面…"
+                installDownloaded()
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                updateStatus = failure.message ?: "下载失败，请确认已连接校园网。"
+            } finally {
+                updateDownloading = false
+            }
+        }
+    }
+
     fun closeUpdateDialog() {
         updateDialog = false
-        installUrl = preferences.getString("install_url", INSTALL_URL).orEmpty()
-        val savedCode = preferences.getInt("available_version_code", 0)
-        availableVersion = if (savedCode > installedVersionCode &&
-            preferences.getString("available_version_source", null) == installUrl.trim())
-            ReleaseInfo(savedCode, preferences.getString("available_version_name", "").orEmpty()) else null
         updateStatus = ""
     }
 
     LaunchedEffect(login) { onLoginVisible(login) }
     LaunchedEffect(Unit) { checkUpdates(manual = false) }
+    LaunchedEffect(Unit) {
+        val now = System.currentTimeMillis()
+        if (FirstOpenReporter.shouldAttempt(preferences.getBoolean("activation_acknowledged", false),
+                preferences.getLong("activation_last_attempt", 0), now)) {
+            val installId = preferences.getString("activation_install_id", null)
+                ?: UUID.randomUUID().toString().also {
+                    preferences.edit().putString("activation_install_id", it).apply()
+                }
+            preferences.edit().putLong("activation_last_attempt", now).apply()
+            val sent = withContext(Dispatchers.IO) {
+                runCatching { FirstOpenReporter.report(installId, installedVersionCode) }.isSuccess
+            }
+            if (sent) preferences.edit().putBoolean("activation_acknowledged", true).apply()
+        }
+    }
     DisposableEffect(Unit) { onDispose { onLoginVisible(false) } }
     MaterialTheme(colorScheme = lightColorScheme(primary = Accent, onSurface = Ink, surface = Color.White, background = Color.White)) {
         Surface(color = Color.White, modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
@@ -359,36 +435,30 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
             dismissButton = { TextButton(onClick = { about = false }) { Text("关闭") } },
         )
         if (updateDialog) AlertDialog(
-            onDismissRequest = ::closeUpdateDialog,
+            onDismissRequest = { if (!updateDownloading) closeUpdateDialog() },
             title = { Text(if (availableVersion != null) "有新版本" else "检查更新") },
             text = { Column {
-                Text(if (updateChecking) "正在检查新版本…" else if (availableVersion != null)
-                    "发现新版本 ${availableVersion?.versionName}（当前 $installedVersionName）"
-                    else updateStatus.ifBlank { "当前版本 $installedVersionName" }, fontSize = 13.sp, color = Ink)
+                Text(when {
+                    updateDownloading -> "正在下载更新：$updateProgress%"
+                    updateChecking -> "正在检查新版本…"
+                    updateStatus.isNotBlank() -> updateStatus
+                    availableVersion != null -> "发现新版本 ${availableVersion?.versionName}（当前 $installedVersionName）"
+                    else -> "当前版本 $installedVersionName"
+                }, fontSize = 13.sp, color = Ink)
+                if (updateDownloading) {
+                    Spacer(Modifier.height(10.dp))
+                    LinearProgressIndicator(progress = { updateProgress / 100f }, modifier = Modifier.fillMaxWidth())
+                }
                 Spacer(Modifier.height(7.dp))
-                Text("手机连接校园网后，可直接下载安装。", fontSize = 12.sp, color = Muted)
-                Spacer(Modifier.height(10.dp))
-                OutlinedTextField(value = installUrl, onValueChange = { value ->
-                    installUrl = value
-                    updateStatus = ""
-                    val savedCode = preferences.getInt("available_version_code", 0)
-                    availableVersion = if (savedCode > installedVersionCode &&
-                        preferences.getString("available_version_source", null) == value.trim())
-                        ReleaseInfo(savedCode, preferences.getString("available_version_name", "").orEmpty()) else null
-                }, label = { Text("校园网下载地址") }, singleLine = true)
-                TextButton(onClick = { checkUpdates(manual = true) }, enabled = !updateChecking,
+                Text("连接校园网即可在 App 内下载；安装时需在系统界面确认。", fontSize = 12.sp, color = Muted)
+                TextButton(onClick = { checkUpdates(manual = true) }, enabled = !updateChecking && !updateDownloading,
                     modifier = Modifier.align(Alignment.End)) { Text("重新检查") }
             } },
-            confirmButton = { TextButton(onClick = {
-                val uri = Uri.parse(installUrl.trim())
-                if (runCatching { UpdateChecker.endpoint(installUrl) }.isSuccess) {
-                    preferences.edit().putString("install_url", installUrl.trim()).apply()
-                    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
-                        .onSuccess { closeUpdateDialog() }
-                        .onFailure { updateStatus = "无法打开浏览器，请手动输入校园网地址。" }
-                } else updateStatus = "校园网下载地址无效，请检查后重试。"
-            }) { Text(if (availableVersion != null) "下载更新" else "打开下载页") } },
-            dismissButton = { TextButton(onClick = ::closeUpdateDialog) { Text("关闭") } },
+            confirmButton = { if (availableVersion != null || pendingApk != null) TextButton(
+                onClick = { if (pendingApk != null) installDownloaded() else downloadUpdate() },
+                enabled = !updateChecking && !updateDownloading,
+            ) { Text(if (pendingApk != null) "安装更新" else "下载更新") } },
+            dismissButton = { TextButton(onClick = ::closeUpdateDialog, enabled = !updateDownloading) { Text("关闭") } },
         )
         if (editor) CourseEditor(initial = editing, onDismiss = { editor = false }, onSave = { course ->
             save(data.copy(courses = data.courses.filterNot { it.id == course.id } + course))

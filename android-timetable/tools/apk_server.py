@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Serve only the public installer and its digest on the local network."""
+"""Serve a fixed public APK allowlist and an anonymous first-open counter."""
 
 import argparse
 import base64
 import hashlib
 import hmac
 import html
+import json
 import os
 import re
 import secrets
+import sqlite3
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
@@ -23,6 +25,23 @@ DIST = ROOT / "dist"
 LOGO = ROOT / "app/src/main/res/drawable-nodpi/xiaojiao_logo.png"
 STATS = DownloadStats()
 ADMIN_PASSWORD_FILE = Path.home() / ".local/share/xiaojiao-timetable/admin_password"
+
+
+def published_apk():
+    digest_file = DIST / "sha256.txt"
+    if not digest_file.is_file():
+        raise FileNotFoundError("APK is not built")
+    match = re.fullmatch(
+        r"([0-9a-f]{64})  (xiaojiao-timetable-[0-9A-Za-z.+_-]+\.apk)\s*",
+        digest_file.read_text(),
+    )
+    if match is None:
+        raise ValueError("invalid published APK metadata")
+    digest, filename = match.groups()
+    file = DIST / filename
+    if not file.is_file() or file.resolve().parent != DIST.resolve():
+        raise FileNotFoundError("published APK is missing")
+    return digest, filename, file
 
 
 def admin_password():
@@ -47,6 +66,7 @@ def admin_page(query):
         page = 1
     page = min(page, 100000)
     unique_ips, total, rows = STATS.overview(page=page)
+    activations, activation_ips, activation_rows = STATS.activation_overview(page=page)
     table_rows = "".join(
         "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>".format(
             html.escape(ip), count,
@@ -56,8 +76,15 @@ def admin_page(query):
     )
     if not table_rows:
         table_rows = '<tr><td colspan="4">暂无下载记录</td></tr>'
+    activation_table = "".join(
+        "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>".format(
+            html.escape(ip), count,
+            time.strftime("%Y-%m-%d %H:%M", time.localtime(first_at)),
+            time.strftime("%Y-%m-%d %H:%M", time.localtime(last_at)),
+        ) for ip, count, first_at, last_at in activation_rows
+    ) or '<tr><td colspan="4">暂无首次打开记录</td></tr>'
     previous = '<a href="/admin?page={}">上一页</a>'.format(page - 1) if page > 1 else ""
-    following = '<a href="/admin?page={}">下一页</a>'.format(page + 1) if page * 100 < unique_ips else ""
+    following = '<a href="/admin?page={}">下一页</a>'.format(page + 1) if page * 100 < max(unique_ips, activation_ips) else ""
     return """<!doctype html><html lang="zh-CN"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>小交课表 · 下载统计</title>
 <style>body{{font-family:system-ui,sans-serif;color:#273449;background:#f5f8fc;margin:0;padding:24px}}
@@ -65,15 +92,56 @@ main{{max-width:900px;margin:auto;background:#fff;padding:24px;border-radius:16p
 h1{{font-size:23px}}p{{color:#758196}}table{{width:100%;border-collapse:collapse}}
 th,td{{padding:10px;text-align:left;border-bottom:1px solid #e7ebf0}}
 th{{background:#f6f8fb}}nav{{display:flex;gap:20px;margin-top:18px}}a{{color:#527fb6}}
-</style><main><h1>小交课表 · 下载统计</h1>
-<p>累计下载：{} 次　不同 IP：{} 个</p>
-<p>仅统计非本机 IP 的完整 APK 响应或续传末段；同一 IP 在 30 秒内重试同一版本合并为一次。统计从启用本页后开始。</p>
+</style><main><h1>小交课表 · 使用统计</h1>
+<p>校园网 APK 下载：{} 次（{} 个 IP）　首次打开：{} 次（{} 个 IP）</p>
+<p>下载只统计本服务成功发送的 APK；网盘下载不在此列。首次打开按随机安装 ID 去重，需手机曾连通校园网；它代表激活，不等于网盘下载量。旧版用户升级后的首次打开也计入。</p>
+<h2>校园网下载</h2>
+<p>仅统计非本机 IP 的完整 APK 响应或续传末段；同一 IP、同一版本 30 秒内重试合并。</p>
 <table><thead><tr><th>IP</th><th>下载次数</th><th>首次下载</th><th>最近下载</th></tr></thead>
-<tbody>{}</tbody></table><nav>{} {}</nav></main></html>""".format(total, unique_ips, table_rows, previous, following).encode()
+<tbody>{}</tbody></table><h2>首次打开</h2>
+<table><thead><tr><th>IP</th><th>设备数</th><th>最早记录</th><th>最近记录</th></tr></thead>
+<tbody>{}</tbody></table><nav>{} {}</nav></main></html>""".format(
+        total, unique_ips, activations, activation_ips,
+        table_rows, activation_table, previous, following).encode()
 
 
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
+
+    def do_POST(self):
+        request_url = urlsplit(self.path)
+        if request_url.path != "/api/activate" or request_url.query:
+            self.send_error(404)
+            return
+        if self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower() != "application/json":
+            self.send_error(415)
+            return
+        length = self.headers.get("Content-Length", "")
+        if not length.isdecimal():
+            self.send_error(411)
+            return
+        if not 1 <= int(length) <= 256:
+            self.send_error(413)
+            return
+        try:
+            self.connection.settimeout(5)
+            payload = json.loads(self.rfile.read(int(length)))
+            if not isinstance(payload, dict) or set(payload) != {"installId", "versionCode"}:
+                raise ValueError("invalid activation payload")
+            STATS.record_activation(payload["installId"], self.client_address[0], payload["versionCode"])
+        except (ValueError, TypeError, UnicodeError, TimeoutError):
+            self.send_error(400)
+            return
+        except (OSError, sqlite3.Error) as error:
+            self.log_error("activation storage failed: %s", error)
+            self.send_error(503)
+            return
+        self.send_response(204)
+        self.send_header("Content-Length", "0")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Connection", "close")
+        self.close_connection = True
+        self.end_headers()
 
     def do_HEAD(self):
         self.respond(head_only=True)
@@ -102,12 +170,9 @@ class Handler(BaseHTTPRequestHandler):
             body = admin_page(request_url.query)
             mime = "text/html; charset=utf-8"
         elif path == "/":
-            digest_file = DIST / "sha256.txt"
-            if not digest_file.exists():
-                self.send_error(503, "APK is not built")
-                return
-            digest, filename = digest_file.read_text().strip().split("  ", 1)
-            if not (DIST / filename).is_file():
+            try:
+                digest, filename, _ = published_apk()
+            except (OSError, ValueError):
                 self.send_error(503, "APK is not built")
                 return
             body = f"""<!doctype html><html lang="zh-CN"><meta charset="utf-8">
@@ -129,12 +194,13 @@ small{{word-break:break-all;color:#758196}}
                 "/version.json": DIST / "version.json",
                 "/logo.png": LOGO,
             }
-            digest_file = DIST / "sha256.txt"
-            if digest_file.exists():
-                _, filename = digest_file.read_text().strip().split("  ", 1)
-                allowed["/" + filename] = DIST / filename
+            try:
+                _, filename, file = published_apk()
+                allowed["/" + filename] = file
+            except (OSError, ValueError):
+                pass
             file = allowed.get(path)
-            if file is None or not file.is_file():
+            if file is None or not file.is_file() or file.resolve().parent not in (DIST.resolve(), LOGO.parent.resolve()):
                 self.send_error(404)
                 return
             body = file.read_bytes()

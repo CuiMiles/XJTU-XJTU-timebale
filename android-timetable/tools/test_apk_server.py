@@ -7,6 +7,7 @@ import json
 import tempfile
 import threading
 import unittest
+import uuid
 from pathlib import Path
 
 import apk_server
@@ -25,13 +26,13 @@ class InstallerServerTest(unittest.TestCase):
         apk_server.ADMIN_PASSWORD_FILE = apk_server.DIST / "admin_password"
         apk_server.LOGO.write_bytes(b"png")
         cls.body = bytes(range(256)) * 1024
-        cls.filename = "xiaojiao-timetable-0.6.0.apk"
+        cls.filename = "xiaojiao-timetable-0.7.0.apk"
         (apk_server.DIST / cls.filename).write_bytes(cls.body)
         (apk_server.DIST / "xiaojiao-timetable.apk").write_bytes(cls.body)
         digest = hashlib.sha256(cls.body).hexdigest()
         (apk_server.DIST / "sha256.txt").write_text("{}  {}\n".format(digest, cls.filename))
         (apk_server.DIST / "version.json").write_text(json.dumps({
-            "versionCode": 7, "versionName": "0.6.0", "apk": cls.filename, "sha256": digest,
+            "versionCode": 8, "versionName": "0.7.0", "apk": cls.filename, "sha256": digest,
         }))
         cls.server = apk_server.ThreadingHTTPServer(("127.0.0.1", 0), apk_server.Handler)
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
@@ -46,10 +47,10 @@ class InstallerServerTest(unittest.TestCase):
         apk_server.STATS, apk_server.ADMIN_PASSWORD_FILE = cls.old_stats, cls.old_password_file
         cls.temp.cleanup()
 
-    def request(self, path, headers=None, method="GET"):
+    def request(self, path, headers=None, method="GET", body=None):
         connection = http.client.HTTPConnection("127.0.0.1", self.server.server_port, timeout=5)
         try:
-            connection.request(method, path, headers=headers or {})
+            connection.request(method, path, body=body, headers=headers or {})
             response = connection.getresponse()
             return response.status, dict(response.getheaders()), response.read()
         finally:
@@ -58,7 +59,7 @@ class InstallerServerTest(unittest.TestCase):
     def test_page_links_versioned_apk(self):
         status, _, body = self.request("/")
         self.assertEqual(status, 200)
-        self.assertIn(b'href="/xiaojiao-timetable-0.6.0.apk"', body)
+        self.assertIn(b'href="/xiaojiao-timetable-0.7.0.apk"', body)
         self.assertIn("校园网".encode(), body)
 
     def test_version_endpoint_matches_published_apk(self):
@@ -67,8 +68,8 @@ class InstallerServerTest(unittest.TestCase):
         self.assertEqual(headers["Content-Type"], "application/json; charset=utf-8")
         self.assertEqual(headers["Cache-Control"], "no-store")
         metadata = json.loads(body)
-        self.assertEqual(metadata["versionCode"], 7)
-        self.assertEqual(metadata["versionName"], "0.6.0")
+        self.assertEqual(metadata["versionCode"], 8)
+        self.assertEqual(metadata["versionName"], "0.7.0")
         self.assertEqual(metadata["apk"], self.filename)
         self.assertEqual(metadata["sha256"], hashlib.sha256(self.body).hexdigest())
 
@@ -95,6 +96,35 @@ class InstallerServerTest(unittest.TestCase):
             unique, total, rows = stats.overview()
             self.assertEqual((unique, total), (2, 3))
             self.assertEqual({row[0]: row[1] for row in rows}, {"192.0.2.1": 2, "192.0.2.2": 1})
+
+    def test_first_open_count_is_idempotent_and_separate_from_downloads(self):
+        install_id = str(uuid.uuid4())
+        body = json.dumps({"installId": install_id, "versionCode": 8}).encode()
+        headers = {"Content-Type": "application/json"}
+        downloads_before = apk_server.STATS.overview()[1]
+        status, _, _ = self.request("/api/activate", headers, "POST", body)
+        self.assertEqual(status, 204)
+        status, _, _ = self.request("/api/activate", headers, "POST", body)
+        self.assertEqual(status, 204)
+        total, _, rows = apk_server.STATS.activation_overview()
+        self.assertEqual(total, 1)
+        self.assertEqual(rows[0][1], 1)
+        self.assertEqual(downloads_before, apk_server.STATS.overview()[1])
+        status, _, page = self.request("/admin", {
+            "Authorization": "Basic " + base64.b64encode((
+                "admin:" + apk_server.ADMIN_PASSWORD_FILE.read_text().strip()).encode()).decode(),
+        })
+        self.assertEqual(status, 200)
+        self.assertIn("首次打开：1 次".encode(), page)
+        self.assertNotIn(install_id.encode(), page)
+
+    def test_activation_rejects_bad_payloads_and_other_post_paths(self):
+        headers = {"Content-Type": "application/json"}
+        for body in (b"{}", b"{\"installId\":\"bad\",\"versionCode\":8}", b"x" * 257):
+            status, _, _ = self.request("/api/activate", headers, "POST", body)
+            self.assertIn(status, (400, 413))
+        status, _, _ = self.request("/admin", headers, "POST", b"{}")
+        self.assertEqual(status, 404)
 
     def test_full_and_resumed_download_reconstruct_same_file(self):
         path = "/" + self.filename
@@ -133,8 +163,11 @@ class InstallerServerTest(unittest.TestCase):
         self.assertEqual(body, self.body)
 
     def test_private_files_are_not_served(self):
-        status, _, _ = self.request("/.env")
-        self.assertEqual(status, 404)
+        (apk_server.DIST / "private.secret").write_text("do not serve")
+        for path in ("/.env", "/private.secret", "/../private.secret",
+                     "/%2e%2e/private.secret", "/app/build/outputs/apk/release/app-release.apk"):
+            status, _, _ = self.request(path)
+            self.assertEqual(status, 404, path)
 
 
 if __name__ == "__main__":
