@@ -52,7 +52,14 @@ def signing_config(jdk: Path) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--verify-only", action="store_true", help="verify and publish an already built release APK")
+    parser.add_argument("--channel", choices=("stable", "test"), help="publish only this update channel")
     args = parser.parse_args()
+    gradle_config = (ROOT / "app/build.gradle.kts").read_text()
+    version = re.search(r'versionName\s*=\s*"([^"]+)"', gradle_config).group(1)
+    version_code = int(re.search(r'versionCode\s*=\s*(\d+)', gradle_config).group(1))
+    channel = args.channel or ("test" if "-test." in version else "stable")
+    if (channel == "test") != ("-test." in version):
+        raise RuntimeError("测试版本必须发布到 test 通道，正式版本必须发布到 stable 通道")
     jdk = Path(os.environ.get("JAVA_HOME", DEFAULT_JDK))
     sdk = Path(os.environ.get("ANDROID_HOME", DEFAULT_SDK))
     gradle = Path(os.environ.get("GRADLE_BIN", DEFAULT_GRADLE))
@@ -77,28 +84,28 @@ def main() -> None:
     apk = ROOT / "app/build/outputs/apk/release/app-release.apk"
     apksigner = sdk / "build-tools/35.0.0/apksigner"
     subprocess.run([str(apksigner), "verify", "--verbose", str(apk)], env=env, check=True)
-    gradle_config = (ROOT / "app/build.gradle.kts").read_text()
-    version = re.search(r'versionName\s*=\s*"([^"]+)"', gradle_config).group(1)
-    version_code = int(re.search(r'versionCode\s*=\s*(\d+)', gradle_config).group(1))
     dist = ROOT / "dist"
     dist.mkdir(exist_ok=True)
     target = dist / f"xiaojiao-timetable-{version}.apk"
-    for published in (target, dist / "xiaojiao-timetable.apk"):
+    publications = (target,) if channel == "test" else (target, dist / "xiaojiao-timetable.apk")
+    for published in publications:
         pending = published.with_name(published.name + ".tmp")
         shutil.copy2(apk, pending)
         os.replace(str(pending), str(published))
     digest = hashlib.sha256(target.read_bytes()).hexdigest()
-    digest_pending = dist / "sha256.txt.tmp"
+    digest_name = "test-sha256.txt" if channel == "test" else "sha256.txt"
+    version_name = "test-version.json" if channel == "test" else "version.json"
+    digest_pending = dist / (digest_name + ".tmp")
     digest_pending.write_text(f"{digest}  {target.name}\n")
-    os.replace(str(digest_pending), str(dist / "sha256.txt"))
-    version_pending = dist / "version.json.tmp"
+    os.replace(str(digest_pending), str(dist / digest_name))
+    version_pending = dist / (version_name + ".tmp")
     version_pending.write_text(json.dumps({
         "versionCode": version_code,
         "versionName": version,
         "apk": target.name,
         "sha256": digest,
     }, ensure_ascii=False) + "\n")
-    os.replace(str(version_pending), str(dist / "version.json"))
+    os.replace(str(version_pending), str(dist / version_name))
     print(f"Signed APK: {target}\nSHA-256: {digest}")
 
 

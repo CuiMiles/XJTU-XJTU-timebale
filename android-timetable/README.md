@@ -8,6 +8,14 @@
 
 本机已生成的签名包在 `dist/xiaojiao-timetable-0.7.1.apk`；`dist/sha256.txt` 是校验值，`dist/version.json` 是更新检查接口的数据。安装包目录被 Git 忽略。发布下一版前先在 `app/build.gradle.kts` 增加 `versionCode` 和 `versionName`，再运行 `python3 tools/build_release.py`。脚本会用 `JAVA_HOME`、`ANDROID_HOME` 和 Gradle 构建、验签，随后更新 `dist/`。首次构建会在当前用户的 `~/.local/share/xiaojiao-timetable/` 创建私有签名密钥。**妥善备份该密钥与 `signing.json`**：后续更新必须使用同一签名。源码和安装包都不包含签名私钥。
 
+当前测试版为 **0.8.0-test.1（versionCode 10）**，新增本地课程提醒。进入「更多 → 课程提醒」启用，默认每节课前 30 分钟通知，可选 0–180 分钟以及「连堂只提醒一次」。通知显示课程名、教室、节次和起止时间；开启实时通知后，课前倒计时到上课、课中倒计时到下课，到期自动收起，也可点「收起」。设置页可发送一分钟的测试通知。Android 13+ 请求通知权限；Android 12+ 可在设置页授权精确的闹钟和提醒，未授权时使用可能延迟的系统提醒。设置页提供通知、锁屏、自启动及后台省电入口。提醒读取现有离线课表，遵循周次、停课、调课和夏冬作息；只安排下一个必要事件，不联网轮询、不常驻前台服务。编辑、导入、删除、开机和同包升级后会重新安排。系统强行停止 App 会影响提醒，需要重新打开一次；厂商的后台限制仍需按设置页指引允许。
+
+Android 16 通知申请系统状态栏实时展示，并携带课程简称和时间；针对 16.0 和后续 36.1 的不同通知规则分别处理，旧系统使用标准通知和倒计时。灵动岛/超级岛最终展示由系统决定。[Android 实时通知文档](https://developer.android.com/develop/ui/views/notifications/live-update)；[Android 16.0 通知实现](https://github.com/aosp-mirror/platform_frameworks_base/blob/android16-release/core/java/android/app/Notification.java)。小米焦点通知/超级岛需要厂商场景审批，当前没有厂商开发者授权，不宣称已开通专有模板。[小米接入说明](https://dev.mi.com/xiaomihyperos/documentation/detail?pId=2146)。通知权限和厂商实机展示仍需在目标手机测试。
+
+发布测试版运行 `python3 tools/build_release.py --channel test`。只生成版本化测试 APK、`dist/test-version.json` 和 `dist/test-sha256.txt`，保留正式版 0.7.1 的 APK、摘要和元数据。包名及签名沿用正式版，覆盖升级保留应用沙盒、课表、调色和 Keystore 登录信息，不需要为升级重新登录；已有凭据到期、失效或用户卸载重装时仍需登录。后续正式发布的 `versionCode` 必须大于已发布测试版。
+
+兼容现有管理员手机的更新入口：在本机 `http://127.0.0.1:8767/admin` 的「管理员测试更新」填当前手机校园网 IP。该 IP 的旧版请求 `/version.json` 会收到测试版，其余设备仍收到正式版；测试 APK 只向名单内 IP 或本机提供。新测试 App 使用 `/test/version.json`，继续按相同设备名单检查测试更新。名单保存于 `~/.local/share/xiaojiao-timetable/test_devices.json`，修改接口要求本机管理员口令、JSON 和专用请求头。手机 IP 改变后更新名单；该 IP 分流是兼容旧客户端的试用控制，不是用户身份认证，共用出口 IP 的设备可能获得相同通道。App 界面不展示 IP；管理员页不公开到校园网。
+
 校园网安装页由 `tools/apk_server.py` 提供，默认端口 `8767`，提供版本化下载链接、HTTP 分段续传及只含版本号/安装包文件名/校验值的 `/version.json`。手机连接校园网后，可在浏览器手动打开 `http://10.184.17.163:8767/` 下载；也可从网盘获得同一个已签名 APK。App 内不展示也不允许修改 IP 或端口，只在用户打开时判断是否距上次检查已满七天；满七天才异步请求一次，退出后不运行定时后台任务。手动点击「检查更新」可随时查询，发现新版时右上角更多图标出现红点、菜单改为「有新版本」；点击「下载更新」后 App 会直接下载、校验 SHA-256、包名、版本号和签名，再交给 Android 系统安装。首次从 App 安装更新时，系统可能要求允许小交课表安装应用。`tools/xiaojiao-apk.service` 可作为用户级 systemd 服务常驻。固定校园网 IP 若改变，须同时修改 `UpdateChecker.kt` 和 `network_security_config.xml` 并发布新 APK；隐藏界面地址不等于能从 APK 或网络流量中保密该地址。
 
 统计页仅允许在本机访问：`http://127.0.0.1:8767/admin`。首次访问会在 `~/.local/share/xiaojiao-timetable/admin_password` 自动生成本机私有口令；浏览器弹窗的用户名是 `admin`，密码读取该文件。统计库在同目录的 `downloads.sqlite3`，分别展示校园网 APK 下载次数和首次打开数及对应 IP。下载只统计非本机 IP 的完整 APK 响应或续传末段，同一 IP、同一版本 30 秒内的重试合并。0.7.0 起每个安装首次打开会异步 POST 一次随机安装 UUID；服务端只保存哈希，重复请求不重复计数。连接失败则仅在用户以后再次打开 App 且已过一天时重试，不运行后台服务、不上传教务账号或课表。网盘下载本身无法由此服务直接统计，首次打开也不等于网盘下载；离线用户在连通校园网前不会计入。旧版用户升级至 0.7.0 后的首次打开也会计入。管理员页面和口令不要公开分享。

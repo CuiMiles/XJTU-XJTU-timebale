@@ -30,7 +30,7 @@ object UpdatePolicy {
 }
 
 object UpdateChecker {
-    fun endpoint(): URL = URL("$CAMPUS_SERVER_URL/version.json")
+    fun endpoint(testing: Boolean = false): URL = URL("$CAMPUS_SERVER_URL/${if (testing) "test/" else ""}version.json")
 
     fun apkUrl(release: ReleaseInfo): URL = URL("$CAMPUS_SERVER_URL/${release.apk}")
 
@@ -47,8 +47,8 @@ object UpdateChecker {
         return ReleaseInfo(code, name, apk, digest)
     }
 
-    fun fetch(): ReleaseInfo {
-        val connection = (endpoint().openConnection() as HttpURLConnection).apply {
+    fun fetch(testing: Boolean = false): ReleaseInfo {
+        val connection = (endpoint(testing).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = 2500
             readTimeout = 2500

@@ -40,4 +40,11 @@ class UpdateCheckerTest {
             }
         }
     }
+
+    @Test fun testBuildUsesIndependentMetadataAndRetainsStrictApkValidation() {
+        assertEquals("http://10.184.17.163:8767/test/version.json", UpdateChecker.endpoint(true).toString())
+        val release = UpdateChecker.parse("""{"versionCode":10,"versionName":"0.8.0-test.1","apk":"xiaojiao-timetable-0.8.0-test.1.apk","sha256":"${"a".repeat(64)}"}""")
+        assertEquals("http://10.184.17.163:8767/xiaojiao-timetable-0.8.0-test.1.apk", UpdateChecker.apkUrl(release).toString())
+        assertTrue(UpdatePolicy.isNewer(release, 9))
+    }
 }

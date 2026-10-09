@@ -72,6 +72,11 @@ private val TodayWash = Color(0xFFF2F7FF)
 private val Accent = Color(0xFF527FB6)
 
 class MainActivity : ComponentActivity() {
+    override fun onResume() {
+        super.onResume()
+        ReminderScheduler.refreshAsync(applicationContext)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.statusBarColor = android.graphics.Color.WHITE
@@ -101,6 +106,8 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
     var paletteOpen by remember { mutableStateOf(false) }
     var paletteCourseName by remember { mutableStateOf<String?>(null) }
     var about by remember { mutableStateOf(false) }
+    var reminders by remember { mutableStateOf(false) }
+    var reminderIntro by remember { mutableStateOf(false) }
     var editor by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<Course?>(null) }
     var selected by remember { mutableStateOf<CourseBlock?>(null) }
@@ -110,13 +117,15 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
     val installedPackage = remember { context.packageManager.getPackageInfo(context.packageName, 0) }
     val installedVersionCode = remember { PackageInfoCompat.getLongVersionCode(installedPackage).toInt() }
     val installedVersionName = remember { installedPackage.versionName.orEmpty() }
+    val testingUpdates = installedVersionName.contains("-test.")
+    val updateSource = UpdateChecker.endpoint(testingUpdates).toString()
     var availableVersion by remember {
         val code = preferences.getInt("available_version_code", 0)
         val name = preferences.getString("available_version_name", "").orEmpty()
         val apk = preferences.getString("available_version_apk", "").orEmpty()
         val digest = preferences.getString("available_version_sha256", "").orEmpty()
         mutableStateOf(if (code > installedVersionCode &&
-            preferences.getString("available_version_source", null) == CAMPUS_SERVER_URL &&
+            preferences.getString("available_version_source", null) == updateSource &&
             apk == "xiaojiao-timetable-$name.apk" && digest.matches(Regex("[0-9a-f]{64}")))
             ReleaseInfo(code, name, apk, digest) else null)
     }
@@ -133,7 +142,7 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
         val migrated = PastelPalette.migrateLegacyDefaults(next.courses)
         val prepared = next.copy(courses = PastelPalette.assignDefaults(migrated))
         runCatching { repository.save(prepared) }
-            .onSuccess { data = prepared; error = null }
+            .onSuccess { data = prepared; error = null; ReminderScheduler.refreshAsync(context) }
             .onFailure { error = it.message ?: "保存课表失败" }
     }
 
@@ -186,7 +195,7 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
             .putString("available_version_name", release.versionName)
             .putString("available_version_apk", release.apk)
             .putString("available_version_sha256", release.sha256)
-            .putString("available_version_source", CAMPUS_SERVER_URL)
+            .putString("available_version_source", updateSource)
         edit.apply()
     }
 
@@ -211,14 +220,14 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
         val now = System.currentTimeMillis()
         if (!manual && !UpdatePolicy.shouldAutoCheck(
                 preferences.getLong("update_last_attempt", 0),
-                preferences.getString("update_last_source", null), CAMPUS_SERVER_URL, now)) return
+                preferences.getString("update_last_source", null), updateSource, now)) return
         preferences.edit().remove("install_url").putLong("update_last_attempt", now)
-            .putString("update_last_source", CAMPUS_SERVER_URL).apply()
+            .putString("update_last_source", updateSource).apply()
         updateChecking = true
         updateStatus = "正在检查新版本…"
         scope.launch {
             try {
-                val release = withContext(Dispatchers.IO) { UpdateChecker.fetch() }
+                val release = withContext(Dispatchers.IO) { UpdateChecker.fetch(testingUpdates) }
                 if (UpdatePolicy.isNewer(release, installedVersionCode)) {
                     if (availableVersion?.versionCode != release.versionCode) pendingApk = null
                     saveAvailable(release)
@@ -245,7 +254,7 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
         updateStatus = "正在下载更新…"
         scope.launch {
             try {
-                val release = withContext(Dispatchers.IO) { UpdateChecker.fetch() }
+                val release = withContext(Dispatchers.IO) { UpdateChecker.fetch(testingUpdates) }
                 if (!UpdatePolicy.isNewer(release, installedVersionCode)) {
                     pendingApk = null
                     saveAvailable(null)
@@ -273,6 +282,9 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
     }
 
     LaunchedEffect(login) { onLoginVisible(login) }
+    LaunchedEffect(data.courses.isNotEmpty()) {
+        if (data.courses.isNotEmpty() && ReminderPreferences(context).shouldIntroduce()) reminderIntro = true
+    }
     LaunchedEffect(Unit) { checkUpdates(manual = false) }
     LaunchedEffect(Unit) {
         val now = System.currentTimeMillis()
@@ -333,6 +345,7 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
         if (menu) AlertDialog(
             onDismissRequest = { menu = false }, title = { Text("更多") },
             text = { Column {
+                MenuRow("课程提醒") { menu = false; reminders = true }
                 MenuRow("导出课表") { menu = false; export.launch("小交课表-2026秋.json") }
                 MenuRow("导入课表") { menu = false; import.launch(arrayOf("application/json", "text/plain")) }
                 MenuRow(if (availableVersion != null) "有新版本" else "检查更新") {
@@ -344,6 +357,18 @@ private fun XiaojiaoApp(onLoginVisible: (Boolean) -> Unit) {
                 MenuRow("关于小交课表") { menu = false; about = true }
             } },
             confirmButton = { TextButton(onClick = { menu = false }) { Text("关闭") } },
+        )
+        if (reminders) ReminderSettingsDialog(onDismiss = { reminders = false })
+        if (reminderIntro && !login) AlertDialog(onDismissRequest = {
+            ReminderPreferences(context).introduced(); reminderIntro = false
+        }, title = { Text("开启课程提醒") },
+            text = { Text("默认每节课前 30 分钟提醒，可自定义时间并显示课程实时通知。") },
+            confirmButton = { TextButton(onClick = {
+                ReminderPreferences(context).introduced(); reminderIntro = false; reminders = true
+            }) { Text("设置提醒") } },
+            dismissButton = { TextButton(onClick = {
+                ReminderPreferences(context).introduced(); reminderIntro = false
+            }) { Text("稍后") } },
         )
         if (paletteOpen) {
             val chosenCourse = data.courses.firstOrNull { it.name == paletteCourseName }
