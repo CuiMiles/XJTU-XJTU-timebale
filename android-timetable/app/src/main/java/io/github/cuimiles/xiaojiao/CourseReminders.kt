@@ -38,6 +38,8 @@ class ReminderPreferences(context: Context) {
     fun dismissedKeys(keys: Set<String>) { preferences.edit().putStringSet("dismissed_keys", keys).apply() }
     fun shouldIntroduce(): Boolean = !preferences.getBoolean("introduced", false)
     fun introduced() { preferences.edit().putBoolean("introduced", true).apply() }
+    fun requestedNotifications(): Boolean = preferences.getBoolean("notification_requested", false)
+    fun markNotificationsRequested() { preferences.edit().putBoolean("notification_requested", true).apply() }
 }
 
 object CourseReminderNotifications {

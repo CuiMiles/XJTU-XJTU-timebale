@@ -6,8 +6,8 @@ android {
         applicationId = "io.github.cuimiles.xiaojiao"
         minSdk = 26
         targetSdk = 36
-        versionCode = 10
-        versionName = "0.8.0-test.1"
+        versionCode = 11
+        versionName = "0.8.0-test.2"
     }
     val releaseStore = System.getenv("XIAOJIAO_SIGNING_STORE_FILE")
     if (!releaseStore.isNullOrBlank()) {

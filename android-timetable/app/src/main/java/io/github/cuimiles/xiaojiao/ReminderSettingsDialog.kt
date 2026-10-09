@@ -1,8 +1,12 @@
 package io.github.cuimiles.xiaojiao
 
 import android.Manifest
+import android.app.Activity
 import android.app.NotificationManager
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -16,12 +20,16 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -34,6 +42,9 @@ fun ReminderSettingsDialog(onDismiss: () -> Unit) {
     var minutes by remember { mutableStateOf(settings.leadMinutes.toString()) }
     var feedback by remember { mutableStateOf("") }
     var permissionEpoch by remember { mutableIntStateOf(0) }
+    var requestInProgress by rememberSaveable { mutableStateOf(false) }
+    var pendingStep by rememberSaveable { mutableStateOf<String?>(null) }
+    var previewAfterPermissions by rememberSaveable { mutableStateOf(false) }
     val owner = LocalLifecycleOwner.current
     val notificationsAllowed = remember(permissionEpoch) { CourseReminderNotifications.allowed(context) }
     val exactAllowed = remember(permissionEpoch) { ReminderScheduler.exactAllowed(context) }
@@ -46,15 +57,81 @@ fun ReminderSettingsDialog(onDismiss: () -> Unit) {
             ReminderScheduler.refreshAsync(context)
         }.onFailure { feedback = "提醒设置未保存，请重试" }
     }
-    fun openSystem(intent: Intent) {
-        runCatching { context.startActivity(intent) }.onFailure {
-            feedback = "请在系统设置的小交课表页面开启相应权限"
-        }
+    fun openSystem(vararg intents: Intent) {
+        if (!ReminderSystemSettings.open(context, intents.toList() + ReminderSystemSettings.details(context)))
+            feedback = "系统设置暂时无法打开，请稍后重试"
+    }
+    fun showPreview() {
+        CourseReminderNotifications.preview(context, settings)
+        Toast.makeText(context, "已发送测试通知，约一分钟后自动收起", Toast.LENGTH_SHORT).show()
     }
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        pendingStep = null
         permissionEpoch++
-        feedback = if (it) "通知已开启，可继续开启准时提醒" else "通知未开启，可在系统设置中允许"
+        if (!it) {
+            requestInProgress = false
+            previewAfterPermissions = false
+            feedback = "通知未允许，点“一键开启提醒权限”可再次申请"
+        }
         ReminderScheduler.refreshAsync(context)
+    }
+    val systemPermission = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        val step = pendingStep
+        pendingStep = null
+        permissionEpoch++
+        if ((step == ReminderPermissionStep.NOTIFICATION_SETTINGS.name && !CourseReminderNotifications.allowed(context)) ||
+            (step == ReminderPermissionStep.EXACT_SETTINGS.name && !ReminderScheduler.exactAllowed(context))) {
+            requestInProgress = false
+            previewAfterPermissions = false
+            feedback = if (step == ReminderPermissionStep.EXACT_SETTINGS.name)
+                "准时提醒未允许，系统提醒可能延迟；可稍后再次开启"
+            else "通知仍未开启，可稍后再次申请"
+        }
+        ReminderScheduler.refreshAsync(context)
+    }
+    LaunchedEffect(requestInProgress, permissionEpoch) {
+        // Resume updates status only; prompts are initiated by the switch or permission/test button.
+        if (!requestInProgress || pendingStep != null) return@LaunchedEffect
+        val missingRuntime = Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context,
+            Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        val activity = context.reminderActivity()
+        val blocked = preferences.requestedNotifications() && activity != null &&
+            !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.POST_NOTIFICATIONS)
+        val step = ReminderPermissionPolicy.next(missingRuntime, CourseReminderNotifications.allowed(context),
+            ReminderScheduler.exactAllowed(context), blocked)
+        if (step == ReminderPermissionStep.READY) {
+            requestInProgress = false
+            feedback = "通知与准时提醒已开启"
+            if (previewAfterPermissions) { previewAfterPermissions = false; showPreview() }
+            return@LaunchedEffect
+        }
+        pendingStep = step.name
+        val launched = runCatching {
+            when (step) {
+                ReminderPermissionStep.NOTIFICATION_REQUEST -> {
+                    preferences.markNotificationsRequested()
+                    notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+                ReminderPermissionStep.NOTIFICATION_SETTINGS -> {
+                    val intent = if (NotificationManagerCompat.from(context).areNotificationsEnabled() && !missingRuntime)
+                        ReminderSystemSettings.channel(context) else ReminderSystemSettings.notifications(context)
+                    systemPermission.launch(intent)
+                }
+                ReminderPermissionStep.EXACT_SETTINGS -> systemPermission.launch(
+                    Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}")))
+                ReminderPermissionStep.READY -> Unit
+            }
+        }.isSuccess
+        if (!launched) {
+            // Some OEMs remove a standard settings page. Open this app's own page as the fallback.
+            val fallback = runCatching { systemPermission.launch(ReminderSystemSettings.details(context)) }.isSuccess
+            if (!fallback) {
+                pendingStep = null
+                requestInProgress = false
+                previewAfterPermissions = false
+                feedback = "系统权限页面暂时无法打开，请稍后重试"
+            }
+        }
     }
     DisposableEffect(owner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -76,8 +153,8 @@ fun ReminderSettingsDialog(onDismiss: () -> Unit) {
                     Switch(checked = settings.enabled, onCheckedChange = { enabled ->
                         preferences.introduced()
                         update(settings.copy(enabled = enabled))
-                        if (enabled && !notificationsAllowed && Build.VERSION.SDK_INT >= 33)
-                            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        if (enabled) { feedback = ""; requestInProgress = true }
+                        else { requestInProgress = false; previewAfterPermissions = false }
                     })
                 }
                 Text("提前多久", fontSize = 13.sp)
@@ -106,7 +183,7 @@ fun ReminderSettingsDialog(onDismiss: () -> Unit) {
                         onCheckedChange = { update(settings.copy(mergeConsecutive = it)) })
                 }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("课程实时通知", Modifier.weight(1f), fontSize = 14.sp)
+                    Text("通知栏倒计时", Modifier.weight(1f), fontSize = 14.sp)
                     Switch(checked = settings.liveEnabled,
                         onCheckedChange = { update(settings.copy(liveEnabled = it)) })
                 }
@@ -115,40 +192,58 @@ fun ReminderSettingsDialog(onDismiss: () -> Unit) {
                 HorizontalDivider()
                 Text("通知：${if (notificationsAllowed) "已允许" else "未允许"} · 准时提醒：${if (exactAllowed) "已允许" else "未允许"}",
                     fontSize = 12.sp)
-                if (!notificationsAllowed) TextButton(onClick = {
-                    openSystem(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                        .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
-                }) { Text("允许通知") }
-                TextButton(onClick = { openSystem(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                    .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)) }) { Text("通知、声音与锁屏设置") }
+                if (!notificationsAllowed || !exactAllowed) {
+                    Button(onClick = { feedback = ""; requestInProgress = true }, enabled = pendingStep == null) {
+                        Text("一键开启提醒权限")
+                    }
+                    Text("自动发起申请或直达权限页面，只需按系统提示确认。", fontSize = 12.sp)
+                }
+                TextButton(onClick = { openSystem(ReminderSystemSettings.channel(context),
+                    ReminderSystemSettings.notifications(context)) }) { Text("通知、声音与锁屏设置") }
                 if (!exactAllowed && Build.VERSION.SDK_INT >= 31) {
                     Text("允许“闹钟和提醒”后才能在设定时刻提醒；未允许时系统可能延迟。", fontSize = 12.sp)
-                    TextButton(onClick = { openSystem(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
-                        Uri.parse("package:${context.packageName}"))) }) { Text("允许准时提醒") }
                 }
                 if (Build.VERSION.SDK_INT >= 36) {
-                    Text("状态栏实时通知：${if (promotedAllowed) "已允许" else "由系统设置控制"}", fontSize = 12.sp)
+                    Text("Android 实时通知：${if (promotedAllowed) "已允许" else "由系统设置控制"}", fontSize = 12.sp)
                     TextButton(onClick = { openSystem(Intent(Settings.ACTION_APP_NOTIFICATION_PROMOTION_SETTINGS)
                         .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)) }) { Text("状态栏实时通知设置") }
                 }
-                Text("灵动岛样式由手机系统决定；不支持时使用通知栏卡片。", fontSize = 12.sp)
+                Text("小交课表目前提供通知栏提醒，尚未接入厂商原子岛 / 超级岛。需要这类展示，可在应用商店查看 WakeUp 等主流课表；以其当前版本和手机适配情况为准。",
+                    fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                TextButton(onClick = {
+                    if (!ReminderSystemSettings.open(context, listOf(
+                        Intent(Intent.ACTION_VIEW, Uri.parse("market://search?q=${Uri.encode("WakeUp课程表")}")),
+                        Intent(Intent.ACTION_VIEW, Uri.parse("https://www.wakeup.fun/")))))
+                        feedback = "应用商店暂时无法打开，可搜索“WakeUp课程表”"
+                }) { Text("查看 WakeUp 课程表") }
                 Text(manufacturerHint(Build.MANUFACTURER), fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                TextButton(onClick = { openSystem(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                    Uri.parse("package:${context.packageName}"))) }) { Text("后台运行与自启动设置") }
+                TextButton(onClick = {
+                    if (!ReminderSystemSettings.open(context, ReminderSystemSettings.background(context)))
+                        feedback = "系统后台设置暂时无法打开，请稍后重试"
+                }) { Text("后台运行与自启动设置") }
                 Text("提醒在手机本地运行，无需联网。系统强行停止 App 后，请重新打开一次。", fontSize = 12.sp)
                 if (feedback.isNotBlank()) Text(feedback, fontSize = 12.sp)
                 TextButton(onClick = {
-                    if (!CourseReminderNotifications.allowed(context)) feedback = "请先允许通知"
-                    else {
-                        CourseReminderNotifications.preview(context, settings)
-                        Toast.makeText(context, "已发送测试通知，约一分钟后自动收起", Toast.LENGTH_SHORT).show()
-                    }
+                    if (!CourseReminderNotifications.allowed(context)) {
+                        feedback = ""; previewAfterPermissions = true; requestInProgress = true
+                    } else showPreview()
                 }) { Text("发送测试通知") }
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("完成") } },
     )
+}
+
+private fun Context.reminderActivity(): Activity? {
+    var current = this
+    while (current is ContextWrapper) {
+        if (current is Activity) return current
+        val base = current.baseContext
+        if (base === current) break
+        current = base
+    }
+    return current as? Activity
 }
 
 private fun manufacturerHint(manufacturer: String): String = when (manufacturer.lowercase()) {
