@@ -6,7 +6,6 @@ import base64
 import hashlib
 import hmac
 import html
-import ipaddress
 import json
 import os
 import re
@@ -26,43 +25,6 @@ DIST = ROOT / "dist"
 LOGO = ROOT / "app/src/main/res/drawable-nodpi/xiaojiao_logo.png"
 STATS = DownloadStats()
 ADMIN_PASSWORD_FILE = Path.home() / ".local/share/xiaojiao-timetable/admin_password"
-TEST_DEVICES_FILE = Path.home() / ".local/share/xiaojiao-timetable/test_devices.json"
-
-
-def test_device_ips():
-    try:
-        value = json.loads(TEST_DEVICES_FILE.read_text())
-        return validated_test_ips(value)
-    except (OSError, ValueError, TypeError):
-        return []
-
-
-def validated_test_ips(value):
-    if not isinstance(value, dict) or set(value) != {"ips"} or not isinstance(value["ips"], list) or len(value["ips"]) > 32:
-        raise ValueError("invalid test devices")
-    result = []
-    for item in value["ips"]:
-        if not isinstance(item, str):
-            raise ValueError("invalid test IP")
-        address = ipaddress.ip_address(item.strip())
-        if not address.is_private or address.is_multicast or address.is_unspecified:
-            raise ValueError("only private test addresses are allowed")
-        result.append(str(address))
-    return sorted(set(result))
-
-
-def save_test_devices(value):
-    ips = validated_test_ips(value)
-    TEST_DEVICES_FILE.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    pending = TEST_DEVICES_FILE.with_suffix(".tmp")
-    fd = os.open(str(pending), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as stream:
-        json.dump({"ips": ips}, stream)
-    os.replace(str(pending), str(TEST_DEVICES_FILE))
-
-
-def testing_client(ip):
-    return ip in ("127.0.0.1", "::1") or ip in test_device_ips()
 
 
 def published_apk(testing=False):
@@ -82,6 +44,35 @@ def published_apk(testing=False):
     if not file.is_file() or file.resolve().parent != DIST.resolve():
         raise FileNotFoundError("published APK is missing")
     return digest, filename, file
+
+
+def publication(testing=False):
+    digest, filename, apk = published_apk(testing)
+    metadata_file = DIST / ("test-version.json" if testing else "version.json")
+    metadata = json.loads(metadata_file.read_text())
+    if (not isinstance(metadata, dict) or type(metadata.get("versionCode")) is not int or
+            metadata["versionCode"] <= 0 or metadata.get("apk") != filename or
+            metadata.get("sha256") != digest or
+            filename != "xiaojiao-timetable-{}.apk".format(metadata.get("versionName"))):
+        raise ValueError("inconsistent release metadata")
+    return {
+        "testing": testing, "code": metadata["versionCode"], "name": metadata["versionName"],
+        "digest": digest, "filename": filename, "apk": apk, "metadata": metadata_file,
+        "checksum": DIST / ("test-sha256.txt" if testing else "sha256.txt"),
+    }
+
+
+def latest_publication():
+    releases = []
+    for testing in (False, True):
+        try:
+            releases.append(publication(testing))
+        except (OSError, ValueError, TypeError):
+            pass
+    if not releases:
+        raise FileNotFoundError("no valid release is published")
+    # Both public and test clients can advance to a newer stable release later.
+    return max(releases, key=lambda release: (release["code"], not release["testing"]))
 
 
 def admin_password():
@@ -130,12 +121,8 @@ def admin_page(query):
         test_info = '已发布 {}。<a href="/test/version.json">检查测试版更新</a>'.format(html.escape(test_name))
     except (OSError, ValueError):
         test_info = "尚未发布测试版"
-    devices = html.escape("\n".join(test_device_ips()))
-    test_panel = """<h2>管理员测试更新</h2><p>{}</p>
-<p>填管理员手机当前校园网 IP（每行一个）。这些手机的现有 App 点击检查更新会获取测试版，其他手机继续获取正式版。手机 IP 变化后需在此更新；共用同一出口 IP 的设备可能获得相同通道。</p>
-<textarea id="test-devices" rows="4" style="width:100%;box-sizing:border-box">{}</textarea>
-<button id="save-test-devices" type="button">保存测试设备</button><span id="test-result"></span>
-<script src="/admin-ui.js" defer></script>""".format(test_info, devices)
+    test_panel = """<h2>公开测试更新</h2><p>{}</p>
+<p>所有能连接校园网下载服务的用户均可下载测试版或在 App 中检查更新，无需登记手机 IP。</p>""".format(test_info)
     return """<!doctype html><html lang="zh-CN"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>小交课表 · 下载统计</title>
 <style>body{{font-family:system-ui,sans-serif;color:#273449;background:#f5f8fc;margin:0;padding:24px}}
@@ -154,17 +141,6 @@ th{{background:#f6f8fb}}nav{{display:flex;gap:20px;margin-top:18px}}a{{color:#52
 <tbody>{}</tbody></table><nav>{} {}</nav>{}</main></html>""".format(
         total, unique_ips, activations, activation_ips,
         table_rows, activation_table, previous, following, test_panel).encode()
-
-
-ADMIN_SCRIPT = b"""document.getElementById('save-test-devices').addEventListener('click', async function(){
-  const result = document.getElementById('test-result');
-  const ips = document.getElementById('test-devices').value.split(/\\s+/).filter(Boolean);
-  try {
-    const response = await fetch('/admin/test-devices', {method:'POST',
-      headers:{'Content-Type':'application/json','X-Xiaojiao-Admin':'1'},body:JSON.stringify({ips})});
-    result.textContent = response.ok ? '\\u5df2\\u4fdd\\u5b58' : '\\u4fdd\\u5b58\\u5931\\u8d25\\uff0c\\u8bf7\\u6838\\u5bf9 IP';
-  } catch (_) { result.textContent = '\\u8fde\\u63a5\\u5931\\u8d25'; }
-});"""
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -188,34 +164,6 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         request_url = urlsplit(self.path)
-        if request_url.path == "/admin/test-devices" and not request_url.query:
-            if not self.authorize_admin():
-                return
-            origin = self.headers.get("Origin")
-            if (self.headers.get("X-Xiaojiao-Admin") != "1" or
-                    self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower() != "application/json" or
-                    (origin and urlsplit(origin).netloc != self.headers.get("Host"))):
-                self.send_error(403)
-                return
-            length = self.headers.get("Content-Length", "")
-            if not length.isdecimal() or not 1 <= int(length) <= 2048:
-                self.send_error(413)
-                return
-            try:
-                self.connection.settimeout(5)
-                save_test_devices(json.loads(self.rfile.read(int(length))))
-            except (ValueError, TypeError, UnicodeError, TimeoutError):
-                self.send_error(400)
-                return
-            except OSError:
-                self.send_error(503)
-                return
-            self.send_response(204)
-            self.send_header("Content-Length", "0")
-            self.send_header("Connection", "close")
-            self.close_connection = True
-            self.end_headers()
-            return
         if request_url.path != "/api/activate" or request_url.query:
             self.send_error(404)
             return
@@ -259,17 +207,27 @@ class Handler(BaseHTTPRequestHandler):
         request_url = urlsplit(self.path)
         path = request_url.path
         filename = "xiaojiao-timetable.apk"
-        if path in ("/admin", "/admin-ui.js"):
+        if path == "/admin":
             if not self.authorize_admin():
                 return
-            body = admin_page(request_url.query) if path == "/admin" else ADMIN_SCRIPT
-            mime = "text/html; charset=utf-8" if path == "/admin" else "application/javascript"
+            body = admin_page(request_url.query)
+            mime = "text/html; charset=utf-8"
         elif path == "/":
             try:
-                digest, filename, _ = published_apk()
+                latest = latest_publication()
+                digest, filename = latest["digest"], latest["filename"]
             except (OSError, ValueError):
                 self.send_error(503, "APK is not built")
                 return
+            label = "测试版" if latest["testing"] else "正式版"
+            alternative = ""
+            if latest["testing"]:
+                try:
+                    stable = publication()
+                    alternative = '<a class="secondary" href="/{}">下载正式版 {}</a>'.format(
+                        html.escape(stable["filename"]), html.escape(stable["name"]))
+                except (OSError, ValueError, TypeError):
+                    pass
             body = f"""<!doctype html><html lang="zh-CN"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>小交课表 · 下载</title><style>
@@ -277,33 +235,35 @@ body{{margin:0;background:#f5f8fc;color:#273449;font-family:system-ui,sans-serif
 main{{max-width:420px;margin:9vh auto;padding:26px;text-align:center;background:white;border-radius:20px;box-shadow:0 10px 35px #dce4ed}}
 img{{width:96px;height:96px;border-radius:20px}}h1{{font-size:24px;margin:14px 0 5px}}p{{color:#758196;line-height:1.6}}
 a{{display:block;background:#527fb6;color:white;text-decoration:none;border-radius:12px;padding:14px;margin:22px 0;font-weight:600}}
+.secondary{{background:#edf2f8;color:#527fb6;margin-top:-10px}}
 small{{word-break:break-all;color:#758196}}
 </style><main><img src="/logo.png" alt="小交课表"><h1>小交课表</h1>
-<p>手机连接校园网后，可在浏览器手动打开本页下载。</p><a href="/{html.escape(filename)}">下载 / 更新 App</a>
+<p>手机连接校园网后，可在浏览器手动打开本页下载。</p><a href="/{html.escape(filename)}">下载{label} {html.escape(latest["name"])}</a>{alternative}
 <small>SHA-256：{html.escape(digest)}<br>版本文件：{html.escape(filename)}</small></main></html>""".encode()
             mime = "text/html; charset=utf-8"
         else:
             allowed = {
-                "/xiaojiao-timetable.apk": DIST / "xiaojiao-timetable.apk",
-                "/sha256.txt": DIST / "sha256.txt",
-                "/version.json": DIST / "version.json",
                 "/logo.png": LOGO,
             }
             try:
-                _, filename, file = published_apk()
-                allowed["/" + filename] = file
+                latest = latest_publication()
+                allowed.update({
+                    "/version.json": latest["metadata"],
+                    "/test/version.json": latest["metadata"],
+                    "/xiaojiao-timetable.apk": latest["apk"],
+                    "/sha256.txt": latest["checksum"],
+                    "/test/sha256.txt": latest["checksum"],
+                })
             except (OSError, ValueError):
                 pass
-            try:
-                _, test_name, test_file = published_apk(testing=True)
-                if self.client_address[0] in test_device_ips():
-                    allowed["/version.json"] = DIST / "test-version.json"
-                if testing_client(self.client_address[0]):
-                    allowed["/test/version.json"] = DIST / "test-version.json"
-                    allowed["/test/sha256.txt"] = DIST / "test-sha256.txt"
-                    allowed["/" + test_name] = test_file
-            except (OSError, ValueError):
-                pass
+            for testing in (False, True):
+                try:
+                    release = publication(testing)
+                    allowed["/" + release["filename"]] = release["apk"]
+                    if not testing:
+                        allowed["/stable/version.json"] = release["metadata"]
+                except (OSError, ValueError, TypeError):
+                    pass
             file = allowed.get(path)
             if file is None or not file.is_file() or file.resolve().parent not in (DIST.resolve(), LOGO.parent.resolve()):
                 self.send_error(404)
@@ -350,8 +310,7 @@ small{{word-break:break-all;color:#758196}}
         self.send_header("Connection", "close")
         self.close_connection = True
         if path in ("/", "/admin"):
-            self.send_header("Content-Security-Policy", "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; " +
-                ("script-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'" if path == "/admin" else ""))
+            self.send_header("Content-Security-Policy", "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'")
         if path == "/admin":
             self.send_header("X-Frame-Options", "DENY")
         if path.endswith(".apk"):

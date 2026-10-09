@@ -21,12 +21,10 @@ class InstallerServerTest(unittest.TestCase):
         cls.temp = tempfile.TemporaryDirectory()
         cls.old_dist, cls.old_logo = apk_server.DIST, apk_server.LOGO
         cls.old_stats, cls.old_password_file = apk_server.STATS, apk_server.ADMIN_PASSWORD_FILE
-        cls.old_devices_file = apk_server.TEST_DEVICES_FILE
         apk_server.DIST = Path(cls.temp.name)
         apk_server.LOGO = apk_server.DIST / "logo.png"
         apk_server.STATS = DownloadStats(apk_server.DIST / "downloads.sqlite3")
         apk_server.ADMIN_PASSWORD_FILE = apk_server.DIST / "admin_password"
-        apk_server.TEST_DEVICES_FILE = apk_server.DIST / "test_devices.json"
         apk_server.LOGO.write_bytes(b"png")
         cls.body = bytes(range(256)) * 1024
         cls.filename = "xiaojiao-timetable-0.7.0.apk"
@@ -56,12 +54,7 @@ class InstallerServerTest(unittest.TestCase):
         cls.thread.join(timeout=2)
         apk_server.DIST, apk_server.LOGO = cls.old_dist, cls.old_logo
         apk_server.STATS, apk_server.ADMIN_PASSWORD_FILE = cls.old_stats, cls.old_password_file
-        apk_server.TEST_DEVICES_FILE = cls.old_devices_file
         cls.temp.cleanup()
-
-    def tearDown(self):
-        if apk_server.TEST_DEVICES_FILE.exists():
-            apk_server.TEST_DEVICES_FILE.unlink()
 
     def request(self, path, headers=None, method="GET", body=None):
         connection = http.client.HTTPConnection("127.0.0.1", self.server.server_port, timeout=5)
@@ -75,8 +68,10 @@ class InstallerServerTest(unittest.TestCase):
     def test_page_links_versioned_apk(self):
         status, _, body = self.request("/")
         self.assertEqual(status, 200)
+        self.assertIn(('href="/' + self.test_filename + '"').encode(), body)
         self.assertIn(b'href="/xiaojiao-timetable-0.7.0.apk"', body)
         self.assertIn("校园网".encode(), body)
+        self.assertIn("下载测试版 0.8.0-test.1".encode(), body)
 
     def test_version_endpoint_matches_published_apk(self):
         status, headers, body = self.request("/version.json")
@@ -84,10 +79,11 @@ class InstallerServerTest(unittest.TestCase):
         self.assertEqual(headers["Content-Type"], "application/json; charset=utf-8")
         self.assertEqual(headers["Cache-Control"], "no-store")
         metadata = json.loads(body)
-        self.assertEqual(metadata["versionCode"], 8)
-        self.assertEqual(metadata["versionName"], "0.7.0")
-        self.assertEqual(metadata["apk"], self.filename)
-        self.assertEqual(metadata["sha256"], hashlib.sha256(self.body).hexdigest())
+        self.assertEqual(metadata["versionCode"], 10)
+        self.assertEqual(metadata["versionName"], "0.8.0-test.1")
+        self.assertEqual(metadata["apk"], self.test_filename)
+        self.assertEqual(metadata["sha256"], hashlib.sha256(b"test APK").hexdigest())
+        self.assertEqual(json.loads(self.request("/stable/version.json")[2])["versionCode"], 8)
 
     def test_admin_requires_credentials_and_shows_ip_counts(self):
         status, headers, body = self.request("/admin")
@@ -176,7 +172,9 @@ class InstallerServerTest(unittest.TestCase):
         self.assertEqual(body, b"")
         status, _, body = self.request(path, {"Range": "bytes=0-7", "If-Range": '"old"'})
         self.assertEqual(status, 200)
-        self.assertEqual(body, self.body)
+        self.assertEqual(body, b"test APK")
+        self.assertEqual(headers["Content-Disposition"],
+                         'attachment; filename="' + self.test_filename + '"')
 
     def test_private_files_are_not_served(self):
         (apk_server.DIST / "private.secret").write_text("do not serve")
@@ -185,38 +183,57 @@ class InstallerServerTest(unittest.TestCase):
             status, _, _ = self.request(path)
             self.assertEqual(status, 404, path)
 
-    def test_test_channel_does_not_replace_public_stable_channel(self):
-        status, _, body = self.request("/version.json")
-        self.assertEqual(status, 200)
-        self.assertEqual(json.loads(body)["versionCode"], 8)
-        status, _, body = self.request("/test/version.json")
-        self.assertEqual(status, 200)
-        self.assertEqual(json.loads(body)["versionCode"], 10)
-        with patch("apk_server.test_device_ips", return_value=["127.0.0.1"]):
-            status, _, body = self.request("/version.json")
-            self.assertEqual(json.loads(body)["versionCode"], 10)
-        with patch("apk_server.test_device_ips", return_value=["10.180.43.162"]):
-            status, _, body = self.request("/version.json", {"X-Forwarded-For": "10.180.43.162"})
-            self.assertEqual(json.loads(body)["versionCode"], 8)
-        with patch("apk_server.testing_client", return_value=False):
-            self.assertEqual(self.request("/test/version.json")[0], 404)
-            self.assertEqual(self.request("/" + self.test_filename)[0], 404)
+    def test_test_release_is_public_but_administration_is_private(self):
+        original_setup = apk_server.Handler.setup
 
-    def test_test_device_management_requires_admin_and_explicit_header(self):
-        body = json.dumps({"ips": ["10.180.43.162"]}).encode()
-        self.assertEqual(self.request("/admin/test-devices", {"Content-Type": "application/json"}, "POST", body)[0], 401)
-        password = apk_server.ADMIN_PASSWORD_FILE.read_text().strip()
-        headers = {"Authorization": "Basic " + base64.b64encode(("admin:" + password).encode()).decode(),
-            "Content-Type": "application/json"}
-        self.assertEqual(self.request("/admin/test-devices", headers, "POST", body)[0], 403)
-        headers["X-Xiaojiao-Admin"] = "1"
-        self.assertEqual(self.request("/admin/test-devices", headers, "POST", body)[0], 204)
-        self.assertEqual(apk_server.test_device_ips(), ["10.180.43.162"])
-        headers["Origin"] = "https://example.com"
-        self.assertEqual(self.request("/admin/test-devices", headers, "POST", body)[0], 403)
-        headers.pop("Origin")
-        bad = json.dumps({"ips": ["10.180.0.0/16"]}).encode()
-        self.assertEqual(self.request("/admin/test-devices", headers, "POST", bad)[0], 400)
+        def remote_setup(handler):
+            original_setup(handler)
+            handler.client_address = ("192.0.2.99", handler.client_address[1])
+
+        with patch.object(apk_server.Handler, "setup", remote_setup):
+            for path in ("/version.json", "/test/version.json"):
+                status, _, body = self.request(path)
+                self.assertEqual(status, 200)
+                self.assertEqual(json.loads(body)["versionCode"], 10)
+            status, _, body = self.request("/" + self.test_filename)
+            self.assertEqual(status, 200)
+            self.assertEqual(body, b"test APK")
+            self.assertEqual(self.request("/admin")[0], 404)
+            self.assertEqual(self.request("/admin-ui.js")[0], 404)
+            self.assertEqual(self.request("/test_devices.json")[0], 404)
+            self.assertEqual(self.request("/admin/test-devices",
+                {"Content-Type": "application/json"}, "POST", b"{}")[0], 404)
+
+    def test_missing_test_release_falls_back_to_stable(self):
+        checksum = apk_server.DIST / "test-sha256.txt"
+        saved = checksum.read_bytes()
+        checksum.unlink()
+        try:
+            for path in ("/version.json", "/test/version.json"):
+                status, _, body = self.request(path)
+                self.assertEqual(status, 200)
+                self.assertEqual(json.loads(body)["versionCode"], 8)
+            self.assertEqual(self.request("/" + self.test_filename)[0], 404)
+            self.assertIn("下载正式版 0.7.0".encode(), self.request("/")[2])
+        finally:
+            checksum.write_bytes(saved)
+
+    def test_newer_stable_updates_both_existing_and_test_apps(self):
+        metadata_file = apk_server.DIST / "version.json"
+        saved = metadata_file.read_bytes()
+        metadata = json.loads(saved)
+        metadata["versionCode"] = 11
+        metadata_file.write_text(json.dumps(metadata))
+        try:
+            for path in ("/version.json", "/test/version.json"):
+                status, _, body = self.request(path)
+                self.assertEqual(status, 200)
+                self.assertEqual(json.loads(body)["versionCode"], 11)
+                self.assertEqual(json.loads(body)["apk"], self.filename)
+            self.assertEqual(self.request("/xiaojiao-timetable.apk")[2], self.body)
+            self.assertIn("下载正式版 0.7.0".encode(), self.request("/")[2])
+        finally:
+            metadata_file.write_bytes(saved)
 
 
 if __name__ == "__main__":
